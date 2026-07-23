@@ -578,6 +578,14 @@ function extractNameFromMessage(message: string) {
     return explicitName[1].replace(/[.!?,;:]+$/u, "").trim();
   }
 
+  const introducedName = message.match(
+    /^\s*[Jj]estem\s+(\p{Lu}[\p{L}'-]{1,78})(?:[.!?,;:]|\s*$)/u,
+  );
+
+  if (introducedName?.[1]) {
+    return introducedName[1];
+  }
+
   const standaloneName = message.match(
     /^\s*([\p{L}][\p{L}'-]{1,78})(?:[.!]?\s*)$/u,
   );
@@ -586,6 +594,12 @@ function extractNameFromMessage(message: string) {
   );
 
   return standaloneName?.[1] ?? nameBeforeQuestion?.[1] ?? null;
+}
+
+function isNameOnlyIntroduction(message: string) {
+  return /^\s*(?:(?:[Mm]am na imi(?:ę|e)|[Nn]azywam si(?:ę|e))\s+[\p{L}][\p{L}\s'-]{0,78}|[Jj]estem\s+\p{Lu}[\p{L}'-]{1,78})[.!]?\s*$/u.test(
+    message,
+  );
 }
 
 function extractWorkDetailsFromMessage(message: string) {
@@ -641,12 +655,17 @@ export async function POST(request: Request) {
     : { company: undefined, jobTitle: undefined };
   const savedFacts: string[] = [];
   let profile = loadedProfile;
+  let savedDisplayName: string | null = null;
 
   if (profileId && detectedName) {
     const savedName = await saveUserName(supabase, profileId, detectedName);
 
     if (savedName.saved && profile) {
-      profile = { ...profile, name: savedName.name ?? profile.name };
+      savedDisplayName = savedName.displayName ?? detectedName;
+      profile = {
+        ...profile,
+        displayName: savedDisplayName,
+      };
       savedFacts.push("imię użytkownika");
     }
   }
@@ -687,6 +706,21 @@ export async function POST(request: Request) {
 
   if (messages.length === 0) {
     return Response.json({ error: "Brak wiadomosci do przetworzenia." }, { status: 400 });
+  }
+
+  if (
+    savedDisplayName &&
+    lastUserMessage &&
+    isNameOnlyIntroduction(lastUserMessage)
+  ) {
+    return new Response(
+      `### Wynik końcowy\nMiło Cię poznać, ${savedDisplayName}! Zapamiętam.`,
+      {
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+        },
+      },
+    );
   }
 
   try {

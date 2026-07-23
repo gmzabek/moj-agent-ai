@@ -138,23 +138,39 @@ export function WorkshopChat({
       isProfileLoading ||
       isRestoringConversation ||
       profileError ||
-      welcomeShownRef.current ||
-      messages.length > 0
+      welcomeShownRef.current
     ) {
+      return;
+    }
+
+    const welcomeText = profile?.displayName
+      ? `Cze\u015b\u0107, ${profile.displayName}! Mi\u0142o Ci\u0119 znowu widzie\u0107. W czym mog\u0119 Ci pom\u00f3c?`
+      : "Cze\u015b\u0107! Nie znamy si\u0119 jeszcze. Jak masz na imi\u0119?";
+    const alreadyWelcomed = profile?.displayName
+      ? messages.some(
+          (message) =>
+            message.role === "assistant" &&
+            getMessageText(message.parts).includes(
+              `Cze\u015b\u0107, ${profile.displayName}!`,
+            ),
+        )
+      : messages.length > 0;
+
+    if (alreadyWelcomed) {
+      welcomeShownRef.current = true;
       return;
     }
 
     welcomeShownRef.current = true;
     setMessages([
+      ...messages,
       {
         id: crypto.randomUUID(),
         role: "assistant",
         parts: [
           {
             type: "text",
-            text: profile?.name
-              ? `Cze\u015b\u0107, ${profile.name}! Mi\u0142o Ci\u0119 znowu widzie\u0107. W czym mog\u0119 Ci pom\u00f3c?`
-              : "Cze\u015b\u0107! Nie znamy si\u0119 jeszcze. Jak masz na imi\u0119?",
+            text: welcomeText,
           },
         ],
       },
@@ -163,8 +179,8 @@ export function WorkshopChat({
     enableUserProfile,
     isProfileLoading,
     isRestoringConversation,
-    messages.length,
-    profile?.name,
+    messages,
+    profile?.displayName,
     profileError,
     setMessages,
   ]);

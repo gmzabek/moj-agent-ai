@@ -5,8 +5,8 @@ import { supabase } from "../../lib/supabase";
 import { useAuth } from "./AuthProvider";
 
 export type UserProfile = {
+  displayName: string | null;
   id: string;
-  name: string | null;
   preferences: Record<string, string>;
 };
 
@@ -65,7 +65,7 @@ export function useUserProfile() {
 
         const { data: existingProfile, error: selectError } = await supabase
           .from("user_profiles")
-          .select("id, name, preferences")
+          .select("id, display_name, preferences")
           .eq("id", userId)
           .maybeSingle();
 
@@ -79,7 +79,7 @@ export function useUserProfile() {
           const { data: createdProfile, error: insertError } = await supabase
             .from("user_profiles")
             .insert({ id: userId })
-            .select("id, name, preferences")
+            .select("id, display_name, preferences")
             .single();
 
           if (insertError && insertError.code !== "23505") {
@@ -92,7 +92,7 @@ export function useUserProfile() {
             const { data: concurrentProfile, error: concurrentSelectError } =
               await supabase
                 .from("user_profiles")
-                .select("id, name, preferences")
+                .select("id, display_name, preferences")
                 .eq("id", userId)
                 .maybeSingle();
 
@@ -110,8 +110,8 @@ export function useUserProfile() {
 
         if (!isCancelled) {
           setProfile({
+            displayName: profileData.display_name,
             id: profileData.id,
-            name: profileData.name,
             preferences: toPreferences(profileData.preferences),
           });
           setProfileError(null);

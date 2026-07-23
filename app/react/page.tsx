@@ -230,12 +230,12 @@ export default function ReactPage() {
       {
         id: crypto.randomUUID(),
         role: "assistant",
-        content: profile?.name
-          ? `### Wynik końcowy\nCześć, ${profile.name}! Miło Cię znowu widzieć. W czym mogę Ci dziś pomóc?`
+        content: profile?.displayName
+          ? `### Wynik końcowy\nCześć, ${profile.displayName}! Miło Cię znowu widzieć. W czym mogę Ci dziś pomóc?`
           : "### Wynik końcowy\nCześć! Nie znamy się jeszcze. Jak masz na imię?",
       },
     ]);
-  }, [isProfileLoading, isRestoringConversation, messages.length, profile?.name, profileError]);
+  }, [isProfileLoading, isRestoringConversation, messages.length, profile?.displayName, profileError]);
 
   const latestAssistant = [...messages]
     .reverse()

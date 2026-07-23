@@ -581,6 +581,14 @@ function extractNameFromMessage(message: string) {
     return explicitName[1].replace(/[.!?,;:]+$/u, "").trim();
   }
 
+  const introducedName = message.match(
+    /^\s*[Jj]estem\s+(\p{Lu}[\p{L}'-]{1,78})(?:[.!?,;:]|\s*$)/u,
+  );
+
+  if (introducedName?.[1]) {
+    return introducedName[1];
+  }
+
   const standaloneName = message.match(
     /^\s*([\p{L}][\p{L}'-]{1,78})(?:[.!]?\s*)$/u,
   );
@@ -589,6 +597,12 @@ function extractNameFromMessage(message: string) {
   );
 
   return standaloneName?.[1] ?? nameBeforeQuestion?.[1] ?? null;
+}
+
+function isNameOnlyIntroduction(message: string) {
+  return /^\s*(?:(?:[Mm]am na imi(?:ę|e)|[Nn]azywam si(?:ę|e))\s+[\p{L}][\p{L}\s'-]{0,78}|[Jj]estem\s+\p{Lu}[\p{L}'-]{1,78})[.!]?\s*$/u.test(
+    message,
+  );
 }
 
 function extractPreferencesFromMessage(message: string) {
@@ -679,7 +693,7 @@ function createProfileAnswer(
   profile: StoredUserProfile | null,
   rememberedFacts: RememberedFacts,
 ) {
-  const name = profile?.name ?? rememberedFacts.name;
+  const name = profile?.displayName ?? rememberedFacts.name;
 
   if (!name) {
     return "Cześć! Nie znamy się jeszcze. Jak masz na imię?";
@@ -1162,12 +1176,17 @@ export async function POST(req: Request) {
   const detectedPreferences = extractPreferencesFromMessage(lastUserText);
   const detectedDetails = extractUserDetails(lastUserText);
   let profile = loadedProfile;
+  let savedDisplayName: string | null = null;
 
   if (detectedName && isValidUserId(userId)) {
     const savedName = await saveUserName(supabase, userId, detectedName);
 
     if (savedName.saved && profile) {
-      profile = { ...profile, name: savedName.name ?? profile.name };
+      savedDisplayName = savedName.displayName ?? detectedName;
+      profile = {
+        ...profile,
+        displayName: savedDisplayName,
+      };
     }
   }
 
@@ -1228,6 +1247,22 @@ export async function POST(req: Request) {
     : "";
   const personalizedSystemPrompt = `${systemPrompt}${getProfilePrompt(profile, profileError)}${conversationMemoryPrompt}`;
   const agentTools = createAgentTools(supabase, userId);
+
+  if (savedDisplayName && isNameOnlyIntroduction(lastUserText)) {
+    const stream = new ReadableStream<UIMessageChunk>({
+      start(controller) {
+        enqueueTextResponse(
+          controller,
+          `Miło Cię poznać, ${savedDisplayName}! Zapamiętam.${createUsageFooter(
+            "odpowiedź lokalna bez wywołania modelu",
+          )}`,
+        );
+        controller.close();
+      },
+    });
+
+    return createUIMessageStreamResponse({ stream });
+  }
 
   if (isProfileQuestion(lastUserText)) {
     const stream = new ReadableStream<UIMessageChunk>({
