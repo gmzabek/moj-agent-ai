@@ -1,0 +1,30 @@
+{
+  "name": "moj-agent-ai",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "check:supabase": "node scripts/check-supabase-w1.mjs",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@ai-sdk/google": "latest",
+    "@ai-sdk/react": "latest",
+    "@google/genai": "^2.10.0",
+    "@supabase/supabase-js": "^2.110.5",
+    "ai": "latest",
+    "next": "16.2.11",
+    "react": "latest",
+    "react-dom": "latest",
+    "zod": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "eslint": "latest",
+    "eslint-config-next": "latest",
+    "typescript": "latest"
+  }
+}
