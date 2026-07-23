@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import { useAuth } from "./AuthProvider";
 
 export type ReactChatMessage = {
   id: string;
@@ -36,6 +37,7 @@ export function useReactSupabaseConversation({
   setMessages,
   isGenerating,
 }: UseReactSupabaseConversationOptions) {
+  const { user } = useAuth();
   const [isRestoringConversation, setIsRestoringConversation] = useState(true);
   const [isMemoryBusy, setIsMemoryBusy] = useState(false);
   const [memoryError, setMemoryError] = useState<string | null>(null);
@@ -47,9 +49,17 @@ export function useReactSupabaseConversation({
   const hasUserMessageRef = useRef(false);
 
   const createConversation = useCallback(async (title: string) => {
+    if (!user) {
+      throw new Error("Zaloguj się, aby zapisać rozmowę.");
+    }
+
     const { data, error } = await supabase
       .from("conversations")
-      .insert({ title, updated_at: new Date().toISOString() })
+      .insert({
+        title,
+        updated_at: new Date().toISOString(),
+        user_id: user.id,
+      })
       .select("id")
       .single();
 
@@ -59,7 +69,7 @@ export function useReactSupabaseConversation({
 
     conversationIdRef.current = data.id;
     return data.id as string;
-  }, []);
+  }, [user]);
 
   const ensureConversation = useCallback(
     async (title: string) => conversationIdRef.current ?? createConversation(title),
@@ -89,6 +99,10 @@ export function useReactSupabaseConversation({
     let isCancelled = false;
 
     async function restoreConversation() {
+      if (!user) {
+        return;
+      }
+
       setIsRestoringConversation(true);
       isRestoringRef.current = true;
       setMemoryError(null);
@@ -97,6 +111,7 @@ export function useReactSupabaseConversation({
         const { data: conversation, error: conversationError } = await supabase
           .from("conversations")
           .select("id")
+          .eq("user_id", user.id)
           .order("updated_at", { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -145,7 +160,7 @@ export function useReactSupabaseConversation({
     return () => {
       isCancelled = true;
     };
-  }, [setMessages]);
+  }, [setMessages, user]);
 
   useEffect(() => {
     if (isRestoringRef.current) {
@@ -206,7 +221,8 @@ export function useReactSupabaseConversation({
           const { error: updateError } = await supabase
             .from("conversations")
             .update(updatePayload)
-            .eq("id", conversationId);
+            .eq("id", conversationId)
+            .eq("user_id", user?.id ?? "");
 
           if (updateError) {
             throw updateError;
@@ -231,7 +247,7 @@ export function useReactSupabaseConversation({
     return () => {
       isCancelled = true;
     };
-  }, [ensureConversation, isGenerating, messages]);
+  }, [ensureConversation, isGenerating, messages, user]);
 
   return {
     isMemoryBusy: isMemoryBusy || isRestoringConversation,

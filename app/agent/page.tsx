@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import { useAuth } from "../components/AuthProvider";
 
 const exchangeRates = [
   { code: "EUR", delta: "0.0013", value: "4.3262 PLN" },
@@ -51,6 +52,7 @@ function formatTime(date: Date) {
 }
 
 export default function AgentPage() {
+  const { user } = useAuth();
   const now = useMemo(() => new Date(), []);
   const dashboardDate = formatDashboardDate(now);
   const updateTime = formatTime(now);
@@ -65,12 +67,22 @@ export default function AgentPage() {
     let isCancelled = false;
 
     async function loadMetrics() {
+      if (!user) {
+        return;
+      }
+
       const [documentsResult, conversationsResult] = await Promise.all([
-        supabase.from("documents").select("title, created_at"),
-        supabase.from("conversations").select("id", {
-          count: "exact",
-          head: true,
-        }),
+        supabase
+          .from("documents")
+          .select("title, created_at")
+          .eq("user_id", user.id),
+        supabase
+          .from("conversations")
+          .select("id", {
+            count: "exact",
+            head: true,
+          })
+          .eq("user_id", user.id),
       ]);
 
       if (isCancelled) {
@@ -105,7 +117,7 @@ export default function AgentPage() {
       isCancelled = true;
       window.clearTimeout(timeout);
     };
-  }, [updateTime]);
+  }, [updateTime, user]);
 
   return (
     <main className="agent-dashboard" aria-label="Dashboard agenta">

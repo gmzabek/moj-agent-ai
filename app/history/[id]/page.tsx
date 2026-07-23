@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabase";
+import { useAuth } from "../../components/AuthProvider";
 
 type Conversation = {
   id: string;
@@ -49,6 +50,7 @@ function formatMessageTime(value: string) {
 
 export default function ConversationHistoryPage() {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -58,6 +60,10 @@ export default function ConversationHistoryPage() {
     let isCancelled = false;
 
     async function loadConversation() {
+      if (!user) {
+        return;
+      }
+
       setIsLoading(true);
       setError(null);
 
@@ -66,6 +72,7 @@ export default function ConversationHistoryPage() {
           .from("conversations")
           .select("id, title, updated_at")
           .eq("id", id)
+          .eq("user_id", user.id)
           .maybeSingle();
 
         if (conversationError) {
@@ -116,7 +123,7 @@ export default function ConversationHistoryPage() {
     return () => {
       isCancelled = true;
     };
-  }, [id]);
+  }, [id, user]);
 
   const conversationTitle = conversation?.title?.trim() || "Bez tytułu";
 

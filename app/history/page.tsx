@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import { useAuth } from "../components/AuthProvider";
 
 type ConversationRow = {
   id: string;
@@ -119,6 +120,7 @@ function highlightMatch(text: string, query: string): ReactNode {
 }
 
 export default function HistoryPage() {
+  const { user } = useAuth();
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -130,14 +132,18 @@ export default function HistoryPage() {
     let isCancelled = false;
 
     async function loadHistory() {
+      if (!user) {
+        return;
+      }
+
       setIsLoading(true);
       setError(null);
 
       try {
-        // Tabela conversations nie ma jeszcze user_id, więc pobieramy całą historię dev.
         const { data: conversationRows, error: conversationsError } = await supabase
           .from("conversations")
           .select("id, title, updated_at")
+          .eq("user_id", user.id)
           .order("updated_at", { ascending: false });
 
         if (conversationsError) {
@@ -218,7 +224,7 @@ export default function HistoryPage() {
     return () => {
       isCancelled = true;
     };
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (!toast) {
@@ -255,7 +261,8 @@ export default function HistoryPage() {
       const { error: conversationError } = await supabase
         .from("conversations")
         .delete()
-        .eq("id", conversation.id);
+        .eq("id", conversation.id)
+        .eq("user_id", user?.id ?? "");
 
       if (conversationError) {
         throw conversationError;

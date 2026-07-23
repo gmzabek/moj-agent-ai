@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { authenticatedFetch } from "../../lib/authenticatedFetch";
 import { reportGeminiFallback } from "../components/geminiFallbackStatus";
 import { MarkdownView } from "../components/MarkdownView";
 
@@ -81,7 +82,7 @@ export default function ExtractPage() {
 
     try {
       let nextAnswer = "";
-      const response = await fetch("/api/chat", {
+      const response = await authenticatedFetch("/api/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({

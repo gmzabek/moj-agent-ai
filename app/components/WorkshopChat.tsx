@@ -3,6 +3,7 @@
 import { useChat, type UIMessage } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { FormEvent, useMemo, useRef, useState, useEffect } from "react";
+import { authenticatedFetch } from "../../lib/authenticatedFetch";
 import { reportGeminiFallback } from "./geminiFallbackStatus";
 import { MarkdownView } from "./MarkdownView";
 import { useSupabaseConversation } from "./useSupabaseConversation";
@@ -103,7 +104,11 @@ export function WorkshopChat({
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const reportedFallbackRef = useRef("");
   const transport = useMemo(
-    () => new DefaultChatTransport({ api: endpoint }),
+    () =>
+      new DefaultChatTransport({
+        api: endpoint,
+        fetch: authenticatedFetch,
+      }),
     [endpoint],
   );
   const { messages, sendMessage, setMessages, status, error } = useChat({

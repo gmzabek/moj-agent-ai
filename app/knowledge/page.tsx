@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { authenticatedFetch } from "../../lib/authenticatedFetch";
 
 type KnowledgeChunk = {
   content: string;
@@ -90,7 +91,7 @@ export default function KnowledgePage() {
     setError(null);
 
     try {
-      const response = await fetch("/api/knowledge");
+      const response = await authenticatedFetch("/api/knowledge");
       const data = (await response.json()) as {
         documents?: KnowledgeDocument[];
         error?: string;
@@ -165,7 +166,7 @@ export default function KnowledgePage() {
     setSearchResults([]);
 
     try {
-      const response = await fetch("/api/search-knowledge", {
+      const response = await authenticatedFetch("/api/search-knowledge", {
         body: JSON.stringify({ query: trimmedQuery }),
         headers: { "Content-Type": "application/json" },
         method: "POST",

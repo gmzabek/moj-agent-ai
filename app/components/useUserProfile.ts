@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import { useAuth } from "./AuthProvider";
 
 export type UserProfile = {
   id: string;
@@ -18,17 +19,6 @@ function toPreferences(value: unknown): Record<string, string> {
     Object.entries(value).filter((entry): entry is [string, string] =>
       typeof entry[1] === "string",
     ),
-  );
-}
-
-function createUserId() {
-  return crypto.randomUUID();
-}
-
-function isValidUserId(value: string | null) {
-  return (
-    typeof value === "string" &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
   );
 }
 
@@ -49,6 +39,7 @@ function getProfileErrorMessage(error: unknown) {
 }
 
 export function useUserProfile() {
+  const { user } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
@@ -58,13 +49,15 @@ export function useUserProfile() {
     let isCancelled = false;
 
     async function loadProfile() {
-      try {
-        let userId = window.localStorage.getItem("user_id");
+      if (!user) {
+        setProfile(null);
+        setUserId(null);
+        setIsProfileLoading(false);
+        return;
+      }
 
-        if (!isValidUserId(userId)) {
-          userId = createUserId();
-          window.localStorage.setItem("user_id", userId);
-        }
+      try {
+        const userId = user.id;
 
         if (!isCancelled) {
           setUserId(userId);
@@ -143,7 +136,7 @@ export function useUserProfile() {
     return () => {
       isCancelled = true;
     };
-  }, []);
+  }, [user]);
 
   return { isProfileLoading, profile, profileError, userId };
 }

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { AppSidebar } from "./components/AppSidebar";
-import { GeminiFallbackBanner } from "./components/GeminiFallbackBanner";
+import { AppShell } from "./components/AppShell";
+import { AuthProvider } from "./components/AuthProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -16,13 +16,9 @@ export default function RootLayout({
   return (
     <html lang="pl">
       <body>
-        <div className="app-frame">
-          <AppSidebar />
-          <div className="app-main">
-            <GeminiFallbackBanner />
-            {children}
-          </div>
-        </div>
+        <AuthProvider>
+          <AppShell>{children}</AppShell>
+        </AuthProvider>
       </body>
     </html>
   );

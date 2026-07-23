@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "./AuthProvider";
 
 const sidebarItems = [
   { href: "/agent", icon: "🏠", label: "Dashboard" },
@@ -30,6 +31,7 @@ function isActivePath(pathname: string, href: string) {
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { signOut, user } = useAuth();
 
   return (
     <aside className="app-sidebar" aria-label="Nawigacja agenta">
@@ -53,6 +55,14 @@ export function AppSidebar() {
           </Link>
         ))}
       </nav>
+
+      <div className="sidebar-account">
+        <span>Zalogowano jako</span>
+        <strong title={user?.email}>{user?.email}</strong>
+        <button onClick={() => void signOut()} type="button">
+          Wyloguj
+        </button>
+      </div>
     </aside>
   );
 }

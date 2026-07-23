@@ -3,6 +3,7 @@
 import { type UIMessage } from "@ai-sdk/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import { useAuth } from "./AuthProvider";
 
 type ChatStatus = "submitted" | "streaming" | "ready" | "error" | string;
 
@@ -70,6 +71,7 @@ export function useSupabaseConversation({
   setMessages,
   status,
 }: UseSupabaseConversationOptions) {
+  const { user } = useAuth();
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [isRestoringConversation, setIsRestoringConversation] = useState(true);
   const [isStartingConversation, setIsStartingConversation] = useState(false);
@@ -83,10 +85,14 @@ export function useSupabaseConversation({
   const ignoredMessageIdsRef = useRef(new Set<string>());
 
   const createConversation = useCallback(async (title: string) => {
+    if (!user) {
+      throw new Error("Zaloguj się, aby zapisać rozmowę.");
+    }
+
     const now = new Date().toISOString();
     const { data, error } = await supabase
       .from("conversations")
-      .insert({ title, updated_at: now })
+      .insert({ title, updated_at: now, user_id: user.id })
       .select("id")
       .single();
 
@@ -98,7 +104,7 @@ export function useSupabaseConversation({
     setConversationId(data.id);
 
     return data.id as string;
-  }, []);
+  }, [user]);
 
   const ensureConversation = useCallback(
     async (title: string) => {
@@ -146,6 +152,10 @@ export function useSupabaseConversation({
     let isCancelled = false;
 
     async function restoreLatestConversation() {
+      if (!user) {
+        return;
+      }
+
       isRestoringRef.current = true;
       setIsRestoringConversation(true);
       setMemoryError(null);
@@ -156,7 +166,8 @@ export function useSupabaseConversation({
         ).get("conversation");
         let conversationQuery = supabase
           .from("conversations")
-          .select("id");
+          .select("id")
+          .eq("user_id", user.id);
 
         if (requestedConversationId) {
           conversationQuery = conversationQuery.eq("id", requestedConversationId);
@@ -226,7 +237,7 @@ export function useSupabaseConversation({
     return () => {
       isCancelled = true;
     };
-  }, [setMessages]);
+  }, [setMessages, user]);
 
   useEffect(() => {
     if (isRestoringRef.current) {
@@ -298,7 +309,8 @@ export function useSupabaseConversation({
           const { error: updateError } = await supabase
             .from("conversations")
             .update(updatePayload)
-            .eq("id", currentConversationId);
+            .eq("id", currentConversationId)
+            .eq("user_id", user?.id ?? "");
 
           if (updateError) {
             throw updateError;
@@ -328,7 +340,7 @@ export function useSupabaseConversation({
     return () => {
       isCancelled = true;
     };
-  }, [ensureConversation, messages, status]);
+  }, [ensureConversation, messages, status, user]);
 
   return {
     conversationId,

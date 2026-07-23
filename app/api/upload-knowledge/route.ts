@@ -1,10 +1,9 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { splitIntoChunks } from "../../../lib/chunking";
 import { generateEmbedding, toPgVector } from "../../../lib/embeddings";
-import {
-  explainSupabaseRlsError,
-  supabaseAdmin,
-} from "../../../lib/supabaseAdmin.server";
+import { explainSupabaseRlsError } from "../../../lib/supabaseAdmin.server";
+import { requireAuthenticatedUser } from "../../../lib/supabaseServer.server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,6 +35,8 @@ function parseUploadBody(body: UploadBody) {
 }
 
 async function saveKnowledge(
+  supabase: SupabaseClient,
+  userId: string,
   title: string,
   content: string,
   onProgress?: (progress: UploadProgress) => void,
@@ -54,7 +55,7 @@ async function saveKnowledge(
     });
 
     const embedding = await generateEmbedding(chunk);
-    const { error } = await supabaseAdmin.from("documents").insert({
+    const { error } = await supabase.from("documents").insert({
       content: chunk,
       created_at: new Date().toISOString(),
       embedding: toPgVector(embedding),
@@ -64,6 +65,7 @@ async function saveKnowledge(
         total_chunks: chunks.length,
       },
       title,
+      user_id: userId,
     });
 
     if (error) {
@@ -78,11 +80,21 @@ function streamEvent(controller: ReadableStreamDefaultController, value: unknown
   controller.enqueue(new TextEncoder().encode(`${JSON.stringify(value)}\n`));
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const auth = await requireAuthenticatedUser(request).catch(() => null);
+
+  if (!auth) {
+    return NextResponse.json(
+      { error: "Wymagane jest zalogowanie." },
+      { status: 401 },
+    );
+  }
+
   try {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await auth.supabase
       .from("documents")
       .select("title, created_at")
+      .eq("user_id", auth.user.id)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -129,12 +141,26 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireAuthenticatedUser(request).catch(() => null);
+
+  if (!auth) {
+    return NextResponse.json(
+      { error: "Wymagane jest zalogowanie." },
+      { status: 401 },
+    );
+  }
+
   try {
     const { content, title } = parseUploadBody((await request.json()) as UploadBody);
     const wantsStream = request.headers.get("x-upload-progress") === "stream";
 
     if (!wantsStream) {
-      const chunksSaved = await saveKnowledge(title, content);
+      const chunksSaved = await saveKnowledge(
+        auth.supabase,
+        auth.user.id,
+        title,
+        content,
+      );
 
       return NextResponse.json({
         chunks_saved: chunksSaved,
@@ -145,12 +171,18 @@ export async function POST(request: Request) {
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          const chunksSaved = await saveKnowledge(title, content, (progress) => {
-            streamEvent(controller, {
-              ...progress,
-              type: "progress",
-            });
-          });
+          const chunksSaved = await saveKnowledge(
+            auth.supabase,
+            auth.user.id,
+            title,
+            content,
+            (progress) => {
+              streamEvent(controller, {
+                ...progress,
+                type: "progress",
+              });
+            },
+          );
 
           streamEvent(controller, {
             chunks_saved: chunksSaved,
@@ -192,6 +224,15 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const auth = await requireAuthenticatedUser(request).catch(() => null);
+
+  if (!auth) {
+    return NextResponse.json(
+      { error: "Wymagane jest zalogowanie." },
+      { status: 401 },
+    );
+  }
+
   try {
     const body = (await request.json()) as { title?: unknown };
     const title = typeof body.title === "string" ? body.title.trim() : "";
@@ -203,10 +244,11 @@ export async function DELETE(request: Request) {
       );
     }
 
-    const { error } = await supabaseAdmin
+    const { error } = await auth.supabase
       .from("documents")
       .delete()
-      .eq("title", title);
+      .eq("title", title)
+      .eq("user_id", auth.user.id);
 
     if (error) {
       throw new Error(explainSupabaseRlsError(error.message));

@@ -1,7 +1,9 @@
 import { google } from "@ai-sdk/google";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { generateText, stepCountIs, tool } from "ai";
 import { z } from "zod";
 import { searchKnowledgeBase } from "../../../lib/searchKnowledge.server";
+import { requireAuthenticatedUser } from "../../../lib/supabaseServer.server";
 import {
   getOrCreateUserProfile,
   getProfilePrompt,
@@ -174,7 +176,8 @@ async function fetchJson<T>(url: string, timeoutMs = 8000): Promise<T> {
   }
 }
 
-const baseTools = {
+function createBaseTools(supabase: SupabaseClient, userId: string) {
+  return {
   searchKnowledge: tool({
     description:
       "Wyszukuje informacje w bazie wiedzy firmy: cenniki, FAQ, regulaminy, procedury, warunki, oferty i dokumenty uslug. Uzywaj ZAWSZE gdy uzytkownik pyta o ceny, pakiety, koszty, oferte, regulamin, FAQ albo informacje firmowe. Nie uzywaj do pogody, kursow walut ani wiedzy ogolnej.",
@@ -186,7 +189,7 @@ const baseTools = {
     }),
     execute: async ({ query }) => {
       try {
-        return await searchKnowledgeBase(query);
+        return await searchKnowledgeBase(supabase, userId, query);
       } catch (error) {
         return {
           error: error instanceof Error ? error.message : "Nie udalo sie przeszukac bazy wiedzy.",
@@ -521,9 +524,13 @@ const baseTools = {
   ...(isSearchGroundingEnabled
     ? { google_search: google.tools.googleSearch({}) }
     : {}),
-};
+  };
+}
 
-function createProfileTools(userId: unknown) {
+function createProfileTools(
+  supabase: SupabaseClient,
+  userId: unknown,
+) {
   const profileId = isValidUserId(userId) ? userId : null;
 
   return {
@@ -533,7 +540,7 @@ function createProfileTools(userId: unknown) {
       inputSchema: z.object({
         name: z.string().min(1).max(79).describe("Imię podane przez użytkownika."),
       }),
-      execute: async ({ name }) => saveUserName(profileId, name),
+      execute: async ({ name }) => saveUserName(supabase, profileId, name),
     }),
     saveUserPreference: tool({
       description:
@@ -546,7 +553,8 @@ function createProfileTools(userId: unknown) {
           .describe("Krótki klucz po angielsku, np. miasto lub ulubione_jedzenie."),
         value: z.string().min(1).max(160).describe("Wartość preferencji użytkownika."),
       }),
-      execute: async ({ key, value }) => saveUserPreference(profileId, key, value),
+      execute: async ({ key, value }) =>
+        saveUserPreference(supabase, profileId, key, value),
     }),
     saveUserDetails: tool({
       description:
@@ -555,7 +563,8 @@ function createProfileTools(userId: unknown) {
         company: z.string().min(1).max(160).optional().describe("Firma lub pracodawca użytkownika."),
         jobTitle: z.string().min(1).max(160).optional().describe("Stanowisko lub rola zawodowa użytkownika."),
       }),
-      execute: async ({ company, jobTitle }) => saveUserDetails(profileId, { company, jobTitle }),
+      execute: async ({ company, jobTitle }) =>
+        saveUserDetails(supabase, profileId, { company, jobTitle }),
     }),
   };
 }
@@ -594,6 +603,17 @@ function extractWorkDetailsFromMessage(message: string) {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireAuthenticatedUser(request).catch(() => null);
+
+  if (!auth) {
+    return Response.json(
+      { error: "Wymagane jest zalogowanie." },
+      { status: 401 },
+    );
+  }
+
+  const { supabase, user } = auth;
+
   if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
     return Response.json(
       {
@@ -611,18 +631,19 @@ export async function POST(request: Request) {
   };
 
   const messages = body.messages?.filter((message) => message.content.trim().length > 0) ?? [];
-  const { profile: loadedProfile, error: profileError } = await getOrCreateUserProfile(body.userId);
+  const profileId = user.id;
+  const { profile: loadedProfile, error: profileError } =
+    await getOrCreateUserProfile(supabase, profileId);
   const lastUserMessage = [...messages].reverse().find((message) => message.role === "user")?.content;
   const detectedName = lastUserMessage ? extractNameFromMessage(lastUserMessage) : null;
   const detectedWorkDetails = lastUserMessage
     ? extractWorkDetailsFromMessage(lastUserMessage)
     : { company: undefined, jobTitle: undefined };
-  const profileId = isValidUserId(body.userId) ? body.userId : null;
   const savedFacts: string[] = [];
   let profile = loadedProfile;
 
   if (profileId && detectedName) {
-    const savedName = await saveUserName(profileId, detectedName);
+    const savedName = await saveUserName(supabase, profileId, detectedName);
 
     if (savedName.saved && profile) {
       profile = { ...profile, name: savedName.name ?? profile.name };
@@ -631,7 +652,11 @@ export async function POST(request: Request) {
   }
 
   if (profileId && (detectedWorkDetails.company || detectedWorkDetails.jobTitle)) {
-    const savedDetails = await saveUserDetails(profileId, detectedWorkDetails);
+    const savedDetails = await saveUserDetails(
+      supabase,
+      profileId,
+      detectedWorkDetails,
+    );
 
     if (savedDetails.saved && profile) {
       profile = {
@@ -655,7 +680,10 @@ export async function POST(request: Request) {
     ? `\n\nFAKT SYSTEMOWY: Automatyczny zapis do Supabase POWIÓDŁ SIĘ. Zapisano: ${savedFacts.join(", ")}. Nie uruchamiaj ponownie narzędzia zapisu dla tych samych danych. Nie wspominaj o problemie technicznym, braku pamięci ani nieudanym zapisie. Potwierdź użytkownikowi zapis w naturalny sposób.`
     : "";
   const personalizedSystemPrompt = `${systemPrompt}${getProfilePrompt(profile, profileError)}${savedFactsPrompt}`;
-  const tools = { ...baseTools, ...createProfileTools(body.userId) };
+  const tools = {
+    ...createBaseTools(supabase, profileId),
+    ...createProfileTools(supabase, profileId),
+  };
 
   if (messages.length === 0) {
     return Response.json({ error: "Brak wiadomosci do przetworzenia." }, { status: 400 });

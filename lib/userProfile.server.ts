@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type StoredUserProfile = {
   id: string;
@@ -44,7 +44,10 @@ export function isValidUserId(value: unknown): value is string {
   return typeof value === "string" && userIdPattern.test(value);
 }
 
-export async function getOrCreateUserProfile(userId: unknown) {
+export async function getOrCreateUserProfile(
+  supabase: SupabaseClient,
+  userId: unknown,
+) {
   if (!isValidUserId(userId)) {
     return { profile: null, error: null };
   }
@@ -79,10 +82,14 @@ export async function getOrCreateUserProfile(userId: unknown) {
   return { profile: toProfile(createdProfile), error: null };
 }
 
-export async function getRecentConversationMemory() {
+export async function getRecentConversationMemory(
+  supabase: SupabaseClient,
+  userId: string,
+) {
   const { data: conversations, error: conversationsError } = await supabase
     .from("conversations")
     .select("id")
+    .eq("user_id", userId)
     .order("updated_at", { ascending: false })
     .limit(10);
 
@@ -117,7 +124,11 @@ export async function getRecentConversationMemory() {
   });
 }
 
-export async function saveUserName(userId: string | null, rawName: string) {
+export async function saveUserName(
+  supabase: SupabaseClient,
+  userId: string | null,
+  rawName: string,
+) {
   const name = rawName.replace(/\s+/g, " ").trim();
 
   if (!userId) {
@@ -136,6 +147,7 @@ export async function saveUserName(userId: string | null, rawName: string) {
 }
 
 export async function saveUserPreference(
+  supabase: SupabaseClient,
   userId: string | null,
   rawKey: string,
   rawValue: string,
@@ -173,6 +185,7 @@ export async function saveUserPreference(
 }
 
 export async function saveUserDetails(
+  supabase: SupabaseClient,
   userId: string | null,
   details: { company?: string; jobTitle?: string },
 ) {

@@ -14,7 +14,9 @@ import {
   type UserContent,
 } from "ai";
 import { z } from "zod";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { searchKnowledgeBase } from "../../../lib/searchKnowledge.server";
+import { requireAuthenticatedUser } from "../../../lib/supabaseServer.server";
 import {
   getOrCreateUserProfile,
   getProfilePrompt,
@@ -321,7 +323,8 @@ async function generateImageWithGemini(prompt: string) {
   };
 }
 
-const baseTools = {
+function createBaseTools(supabase: SupabaseClient, userId: string) {
+  return {
   searchKnowledge: tool({
     description:
       "Wyszukuje informacje w bazie wiedzy firmy: cenniki, FAQ, regulaminy, procedury, warunki, oferty i dokumenty uslug. Uzywaj ZAWSZE gdy uzytkownik pyta o ceny, pakiety, koszty, oferte, regulamin, FAQ albo informacje firmowe. Nie uzywaj do pogody, kursow walut ani wiedzy ogolnej.",
@@ -333,7 +336,7 @@ const baseTools = {
     }),
     execute: async ({ query }) => {
       try {
-        return await searchKnowledgeBase(query);
+        return await searchKnowledgeBase(supabase, userId, query);
       } catch (error) {
         return {
           error: getErrorText(error),
@@ -525,20 +528,24 @@ const baseTools = {
     }),
     execute: async ({ prompt }) => generateImageWithGemini(prompt),
   }),
-};
+  };
+}
 
-function createAgentTools(userId: unknown) {
+function createAgentTools(
+  supabase: SupabaseClient,
+  userId: unknown,
+) {
   const profileId = isValidUserId(userId) ? userId : null;
 
   return {
-    ...baseTools,
+    ...createBaseTools(supabase, profileId ?? ""),
     saveUserName: tool({
       description:
         "Zapisuje imię użytkownika w jego trwałym profilu. Użyj obowiązkowo po otrzymaniu imienia użytkownika.",
       inputSchema: z.object({
         name: z.string().min(1).max(79).describe("Imię użytkownika."),
       }),
-      execute: async ({ name }) => saveUserName(profileId, name),
+      execute: async ({ name }) => saveUserName(supabase, profileId, name),
     }),
     saveUserPreference: tool({
       description:
@@ -547,7 +554,8 @@ function createAgentTools(userId: unknown) {
         key: z.string().min(1).max(48).describe("Krótki klucz, np. branza lub miasto."),
         value: z.string().min(1).max(160).describe("Wartość preferencji."),
       }),
-      execute: async ({ key, value }) => saveUserPreference(profileId, key, value),
+      execute: async ({ key, value }) =>
+        saveUserPreference(supabase, profileId, key, value),
     }),
     saveUserDetails: tool({
       description:
@@ -557,7 +565,7 @@ function createAgentTools(userId: unknown) {
         jobTitle: z.string().min(1).max(160).optional().describe("Stanowisko lub rola zawodowa."),
       }),
       execute: async ({ company, jobTitle }) =>
-        saveUserDetails(profileId, { company, jobTitle }),
+        saveUserDetails(supabase, profileId, { company, jobTitle }),
     }),
   };
 }
@@ -1124,12 +1132,21 @@ function createFallbackStream({
 }
 
 export async function POST(req: Request) {
+  const auth = await requireAuthenticatedUser(req).catch(() => null);
+
+  if (!auth) {
+    return Response.json(
+      { error: "Wymagane jest zalogowanie." },
+      { status: 401 },
+    );
+  }
+
+  const { supabase, user } = auth;
   const {
     image,
     messages,
     model,
-    userId,
-  }: { image?: unknown; messages: UIMessage[]; model?: unknown; userId?: unknown } =
+  }: { image?: unknown; messages: UIMessage[]; model?: unknown } =
     await req.json();
   const selectedModel = getModel(model);
   const lastUserText = getLastUserText(messages);
@@ -1138,14 +1155,16 @@ export async function POST(req: Request) {
     image,
     lastUserText,
   );
-  const { profile: loadedProfile, error: profileError } = await getOrCreateUserProfile(userId);
+  const userId = user.id;
+  const { profile: loadedProfile, error: profileError } =
+    await getOrCreateUserProfile(supabase, userId);
   const detectedName = extractNameFromMessage(lastUserText);
   const detectedPreferences = extractPreferencesFromMessage(lastUserText);
   const detectedDetails = extractUserDetails(lastUserText);
   let profile = loadedProfile;
 
   if (detectedName && isValidUserId(userId)) {
-    const savedName = await saveUserName(userId, detectedName);
+    const savedName = await saveUserName(supabase, userId, detectedName);
 
     if (savedName.saved && profile) {
       profile = { ...profile, name: savedName.name ?? profile.name };
@@ -1155,6 +1174,7 @@ export async function POST(req: Request) {
   if (isValidUserId(userId) && detectedPreferences.length > 0) {
     for (const preference of detectedPreferences) {
       const savedPreference = await saveUserPreference(
+        supabase,
         userId,
         preference.key,
         preference.value,
@@ -1176,7 +1196,11 @@ export async function POST(req: Request) {
     isValidUserId(userId) &&
     (detectedDetails.company || detectedDetails.jobTitle)
   ) {
-    const savedDetails = await saveUserDetails(userId, detectedDetails);
+    const savedDetails = await saveUserDetails(
+      supabase,
+      userId,
+      detectedDetails,
+    );
 
     if (savedDetails.saved && profile) {
       profile = {
@@ -1190,7 +1214,10 @@ export async function POST(req: Request) {
     }
   }
 
-  const recentConversationMemory = await getRecentConversationMemory();
+  const recentConversationMemory = await getRecentConversationMemory(
+    supabase,
+    userId,
+  );
   const rememberedFacts = getFactsFromConversationMemory(recentConversationMemory);
   const conversationMemoryText = recentConversationMemory
     .map((message) => `${message.role === "user" ? "Użytkownik" : "Agent"}: ${message.content}`)
@@ -1200,7 +1227,7 @@ export async function POST(req: Request) {
     ? `\n\nPamięć z wcześniejszych rozmów zapisanych w Supabase:\n${conversationMemoryText}\nWykorzystuj te informacje jako kontekst użytkownika. Nie pytaj ponownie o dane, które są w tej pamięci.`
     : "";
   const personalizedSystemPrompt = `${systemPrompt}${getProfilePrompt(profile, profileError)}${conversationMemoryPrompt}`;
-  const agentTools = createAgentTools(userId);
+  const agentTools = createAgentTools(supabase, userId);
 
   if (isProfileQuestion(lastUserText)) {
     const stream = new ReadableStream<UIMessageChunk>({

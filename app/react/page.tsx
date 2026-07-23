@@ -9,6 +9,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { reportGeminiFallback } from "../components/geminiFallbackStatus";
+import { authenticatedFetch } from "../../lib/authenticatedFetch";
 import {
   type ReactChatMessage,
   useReactSupabaseConversation,
@@ -168,7 +169,7 @@ function createChatMessage(
 
 async function requestAgentResponse(body: string, signal: AbortSignal) {
   const request = () =>
-    fetch("/api/react", {
+    authenticatedFetch("/api/react", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body,

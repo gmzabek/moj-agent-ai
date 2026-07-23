@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import {
-  explainSupabaseRlsError,
-  supabaseAdmin,
-} from "../../../lib/supabaseAdmin.server";
+import { explainSupabaseRlsError } from "../../../lib/supabaseAdmin.server";
+import { requireAuthenticatedUser } from "../../../lib/supabaseServer.server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,11 +22,21 @@ function getNumberMetadata(
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const auth = await requireAuthenticatedUser(request).catch(() => null);
+
+  if (!auth) {
+    return NextResponse.json(
+      { error: "Wymagane jest zalogowanie." },
+      { status: 401 },
+    );
+  }
+
   try {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await auth.supabase
       .from("documents")
       .select("id, title, content, metadata, created_at")
+      .eq("user_id", auth.user.id)
       .order("created_at", { ascending: false });
 
     if (error) {

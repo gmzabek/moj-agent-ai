@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { authenticatedFetch } from "../../lib/authenticatedFetch";
 import {
   AttachmentPreview,
   ImageFileInput,
@@ -121,7 +122,7 @@ export default function VisionPage() {
       return "";
     }
 
-    const response = await fetch("/api/chat", {
+    const response = await authenticatedFetch("/api/chat", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({

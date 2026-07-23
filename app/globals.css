@@ -165,6 +165,244 @@ a {
   text-align: center;
 }
 
+.sidebar-account {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.9rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.9rem 0.3rem 0;
+}
+
+.sidebar-account span {
+  color: #81899a;
+  font-size: 0.68rem;
+  font-weight: 750;
+}
+
+.sidebar-account strong {
+  overflow: hidden;
+  color: #e8ebf2;
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-account button {
+  min-height: 36px;
+  border: 1px solid rgba(248, 113, 113, 0.28);
+  border-radius: 7px;
+  background: rgba(248, 113, 113, 0.08);
+  color: #ffb4b4;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.sidebar-account button:hover {
+  border-color: rgba(248, 113, 113, 0.5);
+  background: rgba(248, 113, 113, 0.14);
+}
+
+.auth-loading {
+  display: grid;
+  min-height: 100vh;
+  place-content: center;
+  justify-items: center;
+  gap: 0.8rem;
+}
+
+.auth-loading span {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(255, 255, 255, 0.14);
+  border-top-color: var(--accent-2);
+  border-radius: 50%;
+  animation: auth-spin 700ms linear infinite;
+}
+
+.auth-loading p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+@keyframes auth-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.login-page {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 1.25rem;
+  background:
+    linear-gradient(135deg, rgba(52, 82, 116, 0.34), transparent 42%),
+    linear-gradient(225deg, rgba(31, 90, 61, 0.24), transparent 36%),
+    #06080c;
+}
+
+.login-panel {
+  width: min(100%, 430px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 1.35rem;
+  background: rgba(12, 15, 21, 0.96);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 34px 90px rgba(0, 0, 0, 0.5);
+}
+
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.login-brand > span {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid rgba(136, 240, 179, 0.28);
+  border-radius: 7px;
+  background: rgba(136, 240, 179, 0.1);
+  color: #a8f6c8;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.login-brand div {
+  display: grid;
+  gap: 0.08rem;
+}
+
+.login-brand strong {
+  color: #ffffff;
+  font-size: 0.9rem;
+}
+
+.login-brand small {
+  color: #8f98aa;
+  font-size: 0.7rem;
+}
+
+.login-heading {
+  margin: 2rem 0 1.2rem;
+}
+
+.login-heading p,
+.login-heading h1 {
+  margin: 0;
+}
+
+.login-heading p {
+  color: #88f0b3;
+  font-size: 0.75rem;
+  font-weight: 850;
+}
+
+.login-heading h1 {
+  margin-top: 0.25rem;
+  color: #ffffff;
+  font-size: 1.9rem;
+  letter-spacing: 0;
+}
+
+.auth-mode {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.3rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 7px;
+  padding: 0.25rem;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.auth-mode button {
+  min-height: 38px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #9099ab;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.auth-mode button.active {
+  background: #222733;
+  color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.login-form {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: 1rem;
+}
+
+.login-form label {
+  display: grid;
+  gap: 0.4rem;
+  color: #cdd2dd;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.login-form input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 7px;
+  padding: 0 0.8rem;
+  outline: 0;
+  background: rgba(255, 255, 255, 0.045);
+  color: #ffffff;
+}
+
+.login-form input:focus {
+  border-color: rgba(143, 184, 255, 0.65);
+  box-shadow: 0 0 0 3px rgba(143, 184, 255, 0.12);
+}
+
+.login-submit {
+  min-height: 44px;
+  border: 1px solid rgba(136, 240, 179, 0.46);
+  border-radius: 7px;
+  background: #8cf0b5;
+  color: #07120c;
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.login-submit:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.auth-message {
+  margin: 0;
+  border: 1px solid;
+  border-radius: 7px;
+  padding: 0.7rem 0.75rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.auth-message.error {
+  border-color: rgba(248, 113, 113, 0.3);
+  background: rgba(248, 113, 113, 0.08);
+  color: #ffb4b4;
+}
+
+.auth-message.success {
+  border-color: rgba(136, 240, 179, 0.3);
+  background: rgba(136, 240, 179, 0.08);
+  color: #baf7d2;
+}
+
 .top-nav {
   position: sticky;
   top: 0;

@@ -1,8 +1,6 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { generateEmbedding, toPgVector } from "./embeddings";
-import {
-  explainSupabaseRlsError,
-  supabaseAdmin,
-} from "./supabaseAdmin.server";
+import { explainSupabaseRlsError } from "./supabaseAdmin.server";
 
 type MatchDocumentRow = {
   added_at?: string | null;
@@ -58,7 +56,11 @@ function getSourceTitle(
   return rowTitle?.trim() || "Dokument firmowy";
 }
 
-async function getAddedAtById(rows: MatchDocumentRow[]) {
+async function getOwnedDocumentsById(
+  supabase: SupabaseClient,
+  rows: MatchDocumentRow[],
+  userId: string,
+) {
   const ids = rows
     .map((row) => row.id)
     .filter((id): id is string => typeof id === "string" && id.length > 0);
@@ -67,23 +69,26 @@ async function getAddedAtById(rows: MatchDocumentRow[]) {
     return new Map<string, string>();
   }
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await supabase
     .from("documents")
     .select("id, created_at")
-    .in("id", ids);
+    .in("id", ids)
+    .eq("user_id", userId);
 
   if (error) {
     throw new Error(`Supabase: ${explainSupabaseRlsError(error.message)}`);
   }
 
   return new Map(
-    ((data ?? []) as Array<{ created_at: string | null; id: string }>).flatMap(
-      (row) => (row.created_at ? [[row.id, row.created_at] as const] : []),
+    ((data ?? []) as Array<{ created_at: string | null; id: string }>).map(
+      (row) => [row.id, row.created_at] as const,
     ),
   );
 }
 
 export async function searchKnowledgeBase(
+  supabase: SupabaseClient,
+  userId: string,
   query: string,
   matchThreshold = 0.5,
   matchCount = 5,
@@ -95,7 +100,7 @@ export async function searchKnowledgeBase(
   }
 
   const embedding = await generateEmbedding(cleanQuery);
-  const { data, error } = await supabaseAdmin.rpc("match_documents", {
+  const { data, error } = await supabase.rpc("match_documents", {
     match_count: matchCount,
     match_threshold: matchThreshold,
     query_embedding: toPgVector(embedding),
@@ -106,8 +111,12 @@ export async function searchKnowledgeBase(
   }
 
   const rows = (data ?? []) as MatchDocumentRow[];
-  const addedAtById = await getAddedAtById(rows);
+  const ownedDocuments = await getOwnedDocumentsById(supabase, rows, userId);
   const results = rows
+    .filter(
+      (row) =>
+        typeof row.id === "string" && ownedDocuments.has(row.id),
+    )
     .map((row) => {
       const metadata = normalizeMetadata(row.metadata);
 
@@ -115,7 +124,7 @@ export async function searchKnowledgeBase(
         added_at:
           row.added_at ??
           row.created_at ??
-          (row.id ? addedAtById.get(row.id) : null) ??
+          (row.id ? ownedDocuments.get(row.id) : null) ??
           null,
         content: row.content?.trim() || "",
         metadata,

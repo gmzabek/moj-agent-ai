@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { authenticatedFetch } from "../../lib/authenticatedFetch";
 
 type KnowledgeDocument = {
   chunks: number;
@@ -90,7 +91,7 @@ export default function UploadPage() {
     setError(null);
 
     try {
-      const response = await fetch("/api/upload-knowledge");
+      const response = await authenticatedFetch("/api/upload-knowledge");
       const data = (await response.json()) as {
         documents?: KnowledgeDocument[];
         error?: string;
@@ -145,7 +146,7 @@ export default function UploadPage() {
     setProgressMessage("Przygotowuję dokument...");
 
     try {
-      const response = await fetch("/api/upload-knowledge", {
+      const response = await authenticatedFetch("/api/upload-knowledge", {
         body: JSON.stringify({
           content: trimmedContent,
           title: trimmedTitle,
@@ -232,7 +233,7 @@ export default function UploadPage() {
     setSuccess(null);
 
     try {
-      const response = await fetch("/api/upload-knowledge", {
+      const response = await authenticatedFetch("/api/upload-knowledge", {
         body: JSON.stringify({ title: documentTitle }),
         headers: {
           "Content-Type": "application/json",

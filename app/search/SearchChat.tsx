@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
+import { authenticatedFetch } from "../../lib/authenticatedFetch";
 import {
   AttachmentPreview,
   ImageFileInput,
@@ -149,7 +150,7 @@ export function SearchChat() {
     }
 
     try {
-      const response = await fetch("/api/chat", {
+      const response = await authenticatedFetch("/api/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
