@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { authenticatedFetch } from "../../lib/authenticatedFetch";
 import { MarkdownView } from "../components/MarkdownView";
 import styles from "./Report.module.css";
 
@@ -61,9 +62,12 @@ function getProgressLabel(elapsedSeconds: number, hasReport: boolean) {
 export default function ReportPage() {
   const [topic, setTopic] = useState("");
   const [report, setReport] = useState("");
+  const [reportTopic, setReportTopic] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [savedReportId, setSavedReportId] = useState<string | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const abortControllerRef = useRef<AbortController | null>(null);
   const stats = useMemo(() => getReportStats(report), [report]);
@@ -98,8 +102,10 @@ export default function ReportPage() {
     setIsLoading(true);
     setElapsedSeconds(0);
     setReport("");
+    setReportTopic(normalizedTopic);
     setError("");
     setIsCopied(false);
+    setSavedReportId(null);
 
     try {
       const response = await fetch("/api/report", {
@@ -166,6 +172,46 @@ export default function ReportPage() {
       window.setTimeout(() => setIsCopied(false), 2_000);
     } catch {
       setError("Nie udało się skopiować raportu. Zaznacz tekst i skopiuj go ręcznie.");
+    }
+  }
+
+  async function saveReport() {
+    if (!report || !reportTopic || isLoading || isSaving || savedReportId) {
+      return;
+    }
+
+    setIsSaving(true);
+    setError("");
+
+    try {
+      const response = await authenticatedFetch("/api/reports", {
+        body: JSON.stringify({
+          content: report,
+          topic: reportTopic,
+        }),
+        headers: {
+          "content-type": "application/json",
+        },
+        method: "POST",
+      });
+      const data = (await response.json().catch(() => null)) as {
+        error?: string;
+        report?: { id?: string };
+      } | null;
+
+      if (!response.ok || !data?.report?.id) {
+        throw new Error(data?.error || "Nie udało się zapisać raportu.");
+      }
+
+      setSavedReportId(data.report.id);
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Nie udało się zapisać raportu.",
+      );
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -286,15 +332,36 @@ export default function ReportPage() {
                 </span>
               </div>
             </div>
-            <button
-              className={styles.copyButton}
-              disabled={isLoading}
-              onClick={() => void copyReport()}
-              type="button"
-            >
-              {isCopied ? "✓ Skopiowano" : "📋 Kopiuj do schowka"}
-            </button>
+            <div className={styles.resultActions}>
+              <button
+                className={styles.copyButton}
+                disabled={isLoading}
+                onClick={() => void copyReport()}
+                type="button"
+              >
+                {isCopied ? "✓ Skopiowano" : "📋 Kopiuj do schowka"}
+              </button>
+              <button
+                className={styles.saveButton}
+                disabled={isLoading || isSaving || Boolean(savedReportId)}
+                onClick={() => void saveReport()}
+                type="button"
+              >
+                {savedReportId
+                  ? "✓ Zapisano w bazie"
+                  : isSaving
+                    ? "Zapisuję…"
+                    : "💾 Zapisz w bazie"}
+              </button>
+            </div>
           </header>
+
+          {savedReportId ? (
+            <p className={styles.savedNotice} role="status">
+              Raport został bezpiecznie zapisany na Twoim koncie.
+              <span>ID: {savedReportId}</span>
+            </p>
+          ) : null}
 
           <article className={styles.document}>
             <MarkdownView text={report} />
