@@ -1,0 +1,559 @@
+.page {
+  width: min(1180px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 48px 0 80px;
+}
+
+.hero {
+  margin-bottom: 28px;
+}
+
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 10px;
+  color: #c6a8ff;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+}
+
+.hero h1 {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(2rem, 4vw, 3.15rem);
+  line-height: 1.05;
+  letter-spacing: -0.045em;
+}
+
+.hero p {
+  margin: 12px 0 0;
+  color: #a4adbd;
+  font-size: 1rem;
+}
+
+.workspace,
+.progress,
+.result,
+.emptyState {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.035), transparent 55%),
+    #101219;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 24px 70px rgba(0, 0, 0, 0.2);
+}
+
+.workspace {
+  padding: 22px;
+}
+
+.companyGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 11px;
+}
+
+.companyGrid label,
+.contextLabel {
+  display: grid;
+  gap: 8px;
+}
+
+.companyGrid label > span,
+.contextLabel > span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #cdd3df;
+  font-size: 0.75rem;
+  font-weight: 850;
+}
+
+.companyGrid label > span small {
+  color: #596578;
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 0.63rem;
+  font-weight: 700;
+}
+
+.companyGrid input,
+.contextLabel textarea {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9px;
+  outline: none;
+  background: #090b10;
+  color: #f2f4f8;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.companyGrid input {
+  min-height: 48px;
+  padding: 0 14px;
+  font-size: 0.87rem;
+}
+
+.contextLabel {
+  margin-top: 16px;
+}
+
+.contextLabel > span {
+  justify-content: flex-start;
+  gap: 7px;
+}
+
+.contextLabel > span small {
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 999px;
+  padding: 2px 6px;
+  color: #687386;
+  font-size: 0.59rem;
+}
+
+.contextLabel textarea {
+  min-height: 92px;
+  resize: vertical;
+  padding: 13px 14px;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.companyGrid input::placeholder,
+.contextLabel textarea::placeholder {
+  color: #5f6878;
+}
+
+.companyGrid input:focus,
+.contextLabel textarea:focus {
+  border-color: rgba(198, 168, 255, 0.58);
+  box-shadow: 0 0 0 3px rgba(198, 168, 255, 0.08);
+}
+
+.formFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.formFooter > span {
+  color: #707b8d;
+  font-size: 0.7rem;
+}
+
+.formFooter button {
+  display: inline-flex;
+  min-width: 142px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 1px solid rgba(198, 168, 255, 0.4);
+  border-radius: 9px;
+  padding: 0 17px;
+  background:
+    linear-gradient(145deg, rgba(198, 168, 255, 0.2), rgba(198, 168, 255, 0.07)),
+    #171224;
+  color: #eee6ff;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.formFooter button:hover:not(:disabled) {
+  border-color: rgba(198, 168, 255, 0.68);
+  transform: translateY(-1px);
+}
+
+.formFooter button:disabled,
+.examples button:disabled,
+.resultHeader > button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.spinner {
+  width: 15px;
+  height: 15px;
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.examples {
+  margin-top: 19px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 16px;
+}
+
+.examples > span,
+.progressText > span,
+.resultHeader > div > span {
+  color: #747e90;
+  font-size: 0.64rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.examples > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.examples button {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  padding: 8px 11px;
+  background: rgba(255, 255, 255, 0.035);
+  color: #adb5c4;
+  cursor: pointer;
+  font-size: 0.7rem;
+  text-align: left;
+}
+
+.examples button:hover:not(:disabled) {
+  border-color: rgba(198, 168, 255, 0.35);
+  background: rgba(198, 168, 255, 0.075);
+  color: #eee8fb;
+}
+
+.error {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 18px;
+  border: 1px solid rgba(248, 113, 113, 0.34);
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: rgba(248, 113, 113, 0.08);
+  color: #ffd0d0;
+}
+
+.error > span {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(248, 113, 113, 0.17);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.error strong {
+  font-size: 0.8rem;
+}
+
+.error p {
+  margin: 3px 0 0;
+  color: #e6a9a9;
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.progress {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 15px;
+  margin-top: 18px;
+  padding: 16px 18px;
+  border-color: rgba(198, 168, 255, 0.21);
+}
+
+.progressCompanies {
+  display: flex;
+  align-items: center;
+}
+
+.progressCompanies span {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 2px solid #101219;
+  border-radius: 50%;
+  background: #29213a;
+  color: #d9c8fb;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.progressCompanies span + span {
+  margin-left: -8px;
+}
+
+.progressCompanies span:first-child {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.progressCompanies span:nth-child(2) {
+  animation: pulse 1.5s 300ms ease-in-out infinite;
+}
+
+.progressCompanies span:nth-child(3) {
+  animation: pulse 1.5s 600ms ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.45;
+    transform: translateY(-2px);
+  }
+}
+
+.progressText {
+  display: grid;
+  gap: 3px;
+}
+
+.progressText strong {
+  color: #f1f3f8;
+  font-size: 0.84rem;
+}
+
+.progressText small {
+  color: #7e8899;
+  font-size: 0.69rem;
+}
+
+.progressActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.progressActions time {
+  min-width: 36px;
+  color: #8b96a8;
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 0.7rem;
+  text-align: right;
+}
+
+.progressActions button {
+  min-height: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 7px;
+  padding: 0 10px;
+  background: rgba(255, 255, 255, 0.035);
+  color: #aeb6c4;
+  cursor: pointer;
+  font-size: 0.69rem;
+  font-weight: 750;
+}
+
+.result {
+  overflow: hidden;
+  margin-top: 18px;
+}
+
+.resultHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+  padding: 14px 18px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  color: #aab2c0;
+  font-size: 0.7rem;
+}
+
+.stats i {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #586274;
+}
+
+.resultHeader > button {
+  min-height: 37px;
+  border: 1px solid rgba(136, 240, 179, 0.31);
+  border-radius: 8px;
+  padding: 0 12px;
+  background: rgba(136, 240, 179, 0.075);
+  color: #b6f7d0;
+  cursor: pointer;
+  font-size: 0.73rem;
+  font-weight: 850;
+}
+
+.resultHeader > button:hover:not(:disabled) {
+  border-color: rgba(136, 240, 179, 0.55);
+  background: rgba(136, 240, 179, 0.13);
+}
+
+.document {
+  position: relative;
+  padding: clamp(22px, 4.5vw, 44px);
+  background: #0c0e14;
+}
+
+.document :global(.markdown-view) {
+  gap: 15px;
+  color: #ccd2dd;
+  font-size: 0.86rem;
+  line-height: 1.68;
+}
+
+.document :global(.markdown-view h2) {
+  margin-top: 16px;
+  color: #fff;
+  font-size: 1.3rem;
+  letter-spacing: -0.024em;
+}
+
+.document :global(.markdown-view h3) {
+  margin-top: 10px;
+  color: #eee9f8;
+}
+
+.document :global(.markdown-view table) {
+  min-width: 840px;
+  font-size: 0.78rem;
+}
+
+.document :global(.markdown-view th) {
+  background: #272035;
+}
+
+.document :global(.markdown-view td) {
+  background: #11131a;
+}
+
+.streamCursor {
+  display: block;
+  width: 7px;
+  height: 16px;
+  margin-top: 12px;
+  background: #c6a8ff;
+  animation: cursor 800ms steps(1) infinite;
+}
+
+@keyframes cursor {
+  50% {
+    opacity: 0;
+  }
+}
+
+.emptyState {
+  display: grid;
+  min-height: 280px;
+  place-content: center;
+  justify-items: center;
+  margin-top: 18px;
+  padding: 32px;
+  color: #7c8698;
+  text-align: center;
+}
+
+.versus {
+  display: flex;
+  align-items: center;
+}
+
+.versus span {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border: 1px solid rgba(198, 168, 255, 0.22);
+  border-radius: 12px;
+  background: rgba(198, 168, 255, 0.06);
+  color: #baa5e1;
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.versus b {
+  margin: 0 7px;
+  color: #505b6c;
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 0.57rem;
+}
+
+.emptyState h2 {
+  margin: 17px 0 0;
+  color: #dce1e9;
+  font-size: 1rem;
+}
+
+.emptyState p {
+  max-width: 470px;
+  margin: 7px 0 0;
+  font-size: 0.77rem;
+  line-height: 1.55;
+}
+
+@media (max-width: 800px) {
+  .page {
+    width: min(100% - 24px, 1180px);
+    padding-top: 30px;
+  }
+
+  .companyGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .formFooter {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .formFooter button {
+    width: 100%;
+  }
+
+  .progress {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .progressActions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+
+  .resultHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .resultHeader > button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .workspace {
+    padding: 16px;
+  }
+
+  .examples > div {
+    display: grid;
+  }
+
+  .document {
+    padding: 20px 14px;
+  }
+}
