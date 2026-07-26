@@ -1,0 +1,524 @@
+.page {
+  width: min(1120px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 48px 0 80px;
+}
+
+.hero {
+  margin-bottom: 28px;
+}
+
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 10px;
+  color: #8fb8ff;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+}
+
+.hero h1 {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(2rem, 4vw, 3.15rem);
+  line-height: 1.05;
+  letter-spacing: -0.045em;
+}
+
+.hero p {
+  margin: 12px 0 0;
+  color: #a4adbd;
+  font-size: 1rem;
+}
+
+.workspace,
+.progress,
+.result,
+.emptyState {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.035), transparent 55%),
+    #101219;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 24px 70px rgba(0, 0, 0, 0.2);
+}
+
+.workspace {
+  padding: 22px;
+}
+
+.form label {
+  display: block;
+  margin-bottom: 9px;
+  color: #dce1ea;
+  font-size: 0.8rem;
+  font-weight: 850;
+}
+
+.inputRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.inputRow input {
+  width: 100%;
+  min-height: 50px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 9px;
+  outline: none;
+  padding: 0 15px;
+  background: #090b10;
+  color: #f1f3f7;
+  font-size: 0.9rem;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.inputRow input::placeholder {
+  color: #5f6878;
+}
+
+.inputRow input:focus {
+  border-color: rgba(143, 184, 255, 0.62);
+  box-shadow: 0 0 0 3px rgba(143, 184, 255, 0.09);
+}
+
+.inputRow > button {
+  display: inline-flex;
+  min-width: 166px;
+  min-height: 50px;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 1px solid rgba(143, 184, 255, 0.42);
+  border-radius: 9px;
+  padding: 0 18px;
+  background:
+    linear-gradient(145deg, rgba(143, 184, 255, 0.21), rgba(143, 184, 255, 0.08)),
+    #111725;
+  color: #e4edff;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.inputRow > button:hover:not(:disabled) {
+  border-color: rgba(143, 184, 255, 0.72);
+  transform: translateY(-1px);
+}
+
+.inputRow > button:disabled,
+.examples button:disabled,
+.copyButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.spinner {
+  width: 15px;
+  height: 15px;
+  border: 2px solid rgba(255, 255, 255, 0.23);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.inputMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 8px;
+  color: #687386;
+  font-size: 0.68rem;
+}
+
+.examples {
+  margin-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 17px;
+}
+
+.examples > span,
+.resultHeader > div > span,
+.progressText > span {
+  color: #737e91;
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.examples > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.examples button {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  padding: 8px 11px;
+  background: rgba(255, 255, 255, 0.035);
+  color: #adb5c4;
+  cursor: pointer;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  text-align: left;
+}
+
+.examples button:hover:not(:disabled) {
+  border-color: rgba(143, 184, 255, 0.38);
+  background: rgba(143, 184, 255, 0.08);
+  color: #e4ecfc;
+}
+
+.error {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 18px;
+  border: 1px solid rgba(248, 113, 113, 0.34);
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: rgba(248, 113, 113, 0.08);
+  color: #ffd0d0;
+}
+
+.error > span {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(248, 113, 113, 0.17);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.error strong {
+  font-size: 0.8rem;
+}
+
+.error p {
+  margin: 3px 0 0;
+  color: #e6a9a9;
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.progress {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 15px;
+  margin-top: 18px;
+  padding: 16px 18px;
+  border-color: rgba(143, 184, 255, 0.22);
+  background:
+    radial-gradient(circle at 0 50%, rgba(143, 184, 255, 0.12), transparent 18rem),
+    #101219;
+}
+
+.progressIcon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 1px solid rgba(143, 184, 255, 0.28);
+  border-radius: 10px;
+  background: rgba(143, 184, 255, 0.08);
+  color: #a9c5ff;
+  font-size: 1.3rem;
+}
+
+.progressIcon span {
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.42;
+    transform: scale(0.84);
+  }
+}
+
+.progressText {
+  display: grid;
+  gap: 3px;
+}
+
+.progressText strong {
+  color: #f0f3f9;
+  font-size: 0.86rem;
+}
+
+.progressText small {
+  color: #7d8799;
+  font-size: 0.69rem;
+}
+
+.progressActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.progressActions time {
+  min-width: 38px;
+  color: #8b96a8;
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 0.72rem;
+  text-align: right;
+}
+
+.progressActions button {
+  min-height: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 7px;
+  padding: 0 10px;
+  background: rgba(255, 255, 255, 0.035);
+  color: #aeb6c4;
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 750;
+}
+
+.progressActions button:hover {
+  border-color: rgba(248, 113, 113, 0.35);
+  color: #ffc1c1;
+}
+
+.result {
+  overflow: hidden;
+  margin-top: 18px;
+}
+
+.resultHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+  padding: 14px 18px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  color: #aab2c0;
+  font-size: 0.7rem;
+}
+
+.stats i {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #586274;
+}
+
+.copyButton {
+  min-height: 37px;
+  border: 1px solid rgba(136, 240, 179, 0.32);
+  border-radius: 8px;
+  padding: 0 12px;
+  background: rgba(136, 240, 179, 0.08);
+  color: #b6f7d0;
+  cursor: pointer;
+  font-size: 0.74rem;
+  font-weight: 850;
+}
+
+.copyButton:hover:not(:disabled) {
+  border-color: rgba(136, 240, 179, 0.58);
+  background: rgba(136, 240, 179, 0.14);
+  color: #effff5;
+}
+
+.document {
+  position: relative;
+  padding: clamp(22px, 5vw, 48px);
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+    #0c0e14;
+  background-size: 34px 100%;
+}
+
+.document :global(.markdown-view) {
+  width: min(100%, 820px);
+  margin: 0 auto;
+  gap: 15px;
+  color: #cbd1dc;
+  font-size: 0.88rem;
+  line-height: 1.72;
+}
+
+.document :global(.markdown-view h2) {
+  margin-top: 17px;
+  color: #fff;
+  font-size: 1.35rem;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+}
+
+.document :global(.markdown-view h3) {
+  margin-top: 12px;
+  color: #eaf0ff;
+  font-size: 1rem;
+}
+
+.document :global(.markdown-view strong) {
+  color: #eef3ff;
+}
+
+.document :global(.markdown-view a) {
+  color: #9fc0ff;
+}
+
+.streamCursor {
+  display: block;
+  width: 7px;
+  height: 16px;
+  margin: 12px auto 0;
+  background: #8fb8ff;
+  animation: cursor 800ms steps(1) infinite;
+}
+
+@keyframes cursor {
+  50% {
+    opacity: 0;
+  }
+}
+
+.emptyState {
+  display: grid;
+  min-height: 280px;
+  place-content: center;
+  justify-items: center;
+  margin-top: 18px;
+  padding: 30px;
+  color: #778194;
+  text-align: center;
+}
+
+.emptyState > div {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.025);
+  color: #77869e;
+  font-size: 1.7rem;
+}
+
+.emptyState h2 {
+  margin: 15px 0 0;
+  color: #dce1e9;
+  font-size: 1rem;
+}
+
+.emptyState p {
+  max-width: 460px;
+  margin: 7px 0 0;
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.emptyState ol {
+  display: flex;
+  gap: 8px;
+  margin: 20px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.emptyState li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  padding: 7px 10px;
+  color: #8e98a9;
+  font-size: 0.69rem;
+  font-weight: 750;
+}
+
+.emptyState li span {
+  color: #60708a;
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 0.62rem;
+}
+
+@media (max-width: 760px) {
+  .page {
+    width: min(100% - 24px, 1120px);
+    padding-top: 30px;
+  }
+
+  .inputRow {
+    grid-template-columns: 1fr;
+  }
+
+  .inputRow > button {
+    width: 100%;
+  }
+
+  .progress {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .progressActions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+
+  .resultHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .copyButton {
+    width: 100%;
+  }
+
+  .document {
+    padding: 22px 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .workspace {
+    padding: 16px;
+  }
+
+  .inputMeta > span:first-child {
+    display: none;
+  }
+
+  .inputMeta {
+    justify-content: flex-end;
+  }
+
+  .examples > div {
+    display: grid;
+  }
+
+  .emptyState ol {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

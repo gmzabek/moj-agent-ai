@@ -7,6 +7,7 @@ import { useAuth } from "./AuthProvider";
 const sidebarItems = [
   { href: "/agent", icon: "🏠", label: "Dashboard" },
   { href: "/email-triage", icon: "📧", label: "E-mail Triage" },
+  { href: "/report", icon: "📊", label: "Raporty" },
   { href: "/city-break-planner", icon: "✈️", label: "Podróże" },
   { href: "/react", icon: "🔄", label: "ReAct" },
   { href: "/chat", icon: "💬", label: "Chat" },
