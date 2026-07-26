@@ -181,6 +181,208 @@
   color: #e4ecfc;
 }
 
+.savedLibrary {
+  overflow: hidden;
+  margin-top: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background:
+    linear-gradient(145deg, rgba(136, 240, 179, 0.035), transparent 54%),
+    #101219;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 20px 60px rgba(0, 0, 0, 0.16);
+}
+
+.libraryHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px 20px;
+}
+
+.libraryHeader > div:first-child > span {
+  color: #7a8b82;
+  font-size: 0.64rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.libraryHeader h2 {
+  margin: 5px 0 0;
+  color: #eef5f1;
+  font-size: 1rem;
+  letter-spacing: -0.015em;
+}
+
+.libraryHeader p {
+  margin: 5px 0 0;
+  color: #778396;
+  font-size: 0.72rem;
+}
+
+.libraryControls {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 9px;
+}
+
+.libraryControls strong {
+  display: grid;
+  min-width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid rgba(136, 240, 179, 0.18);
+  border-radius: 8px;
+  background: rgba(136, 240, 179, 0.06);
+  color: #a5dabb;
+  font-size: 0.76rem;
+}
+
+.libraryControls button {
+  min-height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 8px;
+  padding: 0 10px;
+  background: rgba(255, 255, 255, 0.035);
+  color: #aeb7c5;
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.libraryControls button:hover:not(:disabled) {
+  border-color: rgba(136, 240, 179, 0.3);
+  color: #dff8e9;
+}
+
+.libraryControls button:disabled {
+  cursor: wait;
+  opacity: 0.52;
+}
+
+.libraryError {
+  margin: 0;
+  border-top: 1px solid rgba(248, 113, 113, 0.17);
+  padding: 12px 20px;
+  background: rgba(248, 113, 113, 0.06);
+  color: #eab2b2;
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.libraryLoading,
+.libraryEmpty {
+  display: flex;
+  min-height: 86px;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  color: #7e899b;
+  font-size: 0.73rem;
+}
+
+.libraryEmpty span {
+  color: #657185;
+  font-size: 1rem;
+}
+
+.libraryEmpty p {
+  margin: 0;
+}
+
+.reportList {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 0;
+  list-style: none;
+}
+
+.reportList li + li {
+  border-top: 1px solid rgba(255, 255, 255, 0.065);
+}
+
+.reportList button {
+  display: grid;
+  width: 100%;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  padding: 13px 20px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background 150ms ease;
+}
+
+.reportList button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.reportList button[aria-current="true"] {
+  background:
+    linear-gradient(90deg, rgba(136, 240, 179, 0.09), transparent 62%),
+    rgba(255, 255, 255, 0.015);
+}
+
+.reportList button:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
+.reportListIcon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+  font-size: 0.9rem;
+}
+
+.reportListContent {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.reportListContent strong {
+  overflow: hidden;
+  color: #dce2eb;
+  font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reportListContent small {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #727e90;
+  font-size: 0.65rem;
+}
+
+.reportListContent i {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #4d5868;
+}
+
+.openLabel {
+  color: #8daf9a;
+  font-size: 0.68rem;
+  font-weight: 850;
+}
+
 .error {
   display: flex;
   align-items: flex-start;
@@ -539,6 +741,19 @@
     flex-direction: column;
   }
 
+  .libraryHeader {
+    align-items: flex-start;
+  }
+
+  .reportList button {
+    grid-template-columns: auto minmax(0, 1fr);
+    padding: 13px 16px;
+  }
+
+  .openLabel {
+    grid-column: 2;
+  }
+
   .copyButton {
     width: 100%;
   }
@@ -577,6 +792,28 @@
 
   .examples > div {
     display: grid;
+  }
+
+  .libraryHeader {
+    flex-direction: column;
+  }
+
+  .libraryControls {
+    width: 100%;
+  }
+
+  .libraryControls button {
+    flex: 1;
+  }
+
+  .reportListContent small {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .reportListContent i {
+    display: none;
   }
 
   .emptyState ol {

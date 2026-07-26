@@ -34,6 +34,41 @@ function getDatabaseError(error: {
   return `Supabase: ${error.message}`;
 }
 
+export async function GET(request: Request) {
+  const auth = await requireAuthenticatedUser(request).catch(() => null);
+
+  if (!auth) {
+    return NextResponse.json(
+      { error: "Sesja wygasła. Zaloguj się ponownie." },
+      { status: 401 },
+    );
+  }
+
+  const { data, error } = await auth.supabase
+    .from("reports")
+    .select("id, topic, word_count, source_count, created_at")
+    .eq("user_id", auth.user.id)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (error) {
+    return NextResponse.json(
+      { error: getDatabaseError(error) },
+      { status: 500 },
+    );
+  }
+
+  return NextResponse.json({
+    reports: (data ?? []).map((report) => ({
+      createdAt: report.created_at,
+      id: report.id,
+      sourceCount: report.source_count,
+      topic: report.topic,
+      wordCount: report.word_count,
+    })),
+  });
+}
+
 export async function POST(request: Request) {
   const auth = await requireAuthenticatedUser(request).catch(() => null);
 

@@ -1,6 +1,13 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import {
+  FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { authenticatedFetch } from "../../lib/authenticatedFetch";
 import { MarkdownView } from "../components/MarkdownView";
 import styles from "./Report.module.css";
@@ -11,6 +18,21 @@ const examples = [
   "Wpływ pracy zdalnej na produktywność — badania i statystyki",
   "Rynek nieruchomości w Krakowie — ceny, trendy, prognozy",
 ];
+
+type SavedReportSummary = {
+  createdAt: string;
+  id: string;
+  sourceCount: number;
+  topic: string;
+  wordCount: number;
+};
+
+function formatReportDate(value: string) {
+  return new Intl.DateTimeFormat("pl-PL", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
 
 function getReportStats(report: string) {
   const words = report.trim() ? report.trim().split(/\s+/).length : 0;
@@ -68,9 +90,51 @@ export default function ReportPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [savedReportId, setSavedReportId] = useState<string | null>(null);
+  const [savedReports, setSavedReports] = useState<SavedReportSummary[]>([]);
+  const [savedReportsError, setSavedReportsError] = useState("");
+  const [isLoadingSavedReports, setIsLoadingSavedReports] = useState(true);
+  const [openingReportId, setOpeningReportId] = useState<string | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const resultRef = useRef<HTMLElement | null>(null);
   const stats = useMemo(() => getReportStats(report), [report]);
+
+  const loadSavedReports = useCallback(async () => {
+    setIsLoadingSavedReports(true);
+    setSavedReportsError("");
+
+    try {
+      const response = await authenticatedFetch("/api/reports");
+      const data = (await response.json().catch(() => null)) as {
+        error?: string;
+        reports?: SavedReportSummary[];
+      } | null;
+
+      if (!response.ok || !data?.reports) {
+        throw new Error(
+          data?.error || "Nie udało się pobrać zapisanych raportów.",
+        );
+      }
+
+      setSavedReports(data.reports);
+    } catch (caughtError) {
+      setSavedReportsError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Nie udało się pobrać zapisanych raportów.",
+      );
+    } finally {
+      setIsLoadingSavedReports(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      void loadSavedReports();
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+  }, [loadSavedReports]);
 
   useEffect(() => {
     if (!isLoading) {
@@ -204,6 +268,7 @@ export default function ReportPage() {
       }
 
       setSavedReportId(data.report.id);
+      await loadSavedReports();
     } catch (caughtError) {
       setError(
         caughtError instanceof Error
@@ -212,6 +277,58 @@ export default function ReportPage() {
       );
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function openSavedReport(reportId: string) {
+    if (openingReportId || isLoading) {
+      return;
+    }
+
+    setOpeningReportId(reportId);
+    setError("");
+
+    try {
+      const response = await authenticatedFetch(
+        `/api/reports/${encodeURIComponent(reportId)}`,
+      );
+      const data = (await response.json().catch(() => null)) as {
+        error?: string;
+        report?: {
+          content?: string;
+          id?: string;
+          topic?: string;
+        };
+      } | null;
+
+      if (
+        !response.ok ||
+        !data?.report?.id ||
+        !data.report.content ||
+        !data.report.topic
+      ) {
+        throw new Error(data?.error || "Nie udało się otworzyć raportu.");
+      }
+
+      setReport(data.report.content);
+      setReportTopic(data.report.topic);
+      setTopic(data.report.topic);
+      setSavedReportId(data.report.id);
+      setIsCopied(false);
+      window.setTimeout(() => {
+        resultRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 0);
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Nie udało się otworzyć raportu.",
+      );
+    } finally {
+      setOpeningReportId(null);
     }
   }
 
@@ -284,11 +401,91 @@ export default function ReportPage() {
         </div>
       </section>
 
+      <section className={styles.savedLibrary} aria-label="Zapisane raporty">
+        <header className={styles.libraryHeader}>
+          <div>
+            <span>PRYWATNA BIBLIOTEKA</span>
+            <h2>💾 Zapisane raporty</h2>
+            <p>Otwieraj raporty zapisane na Twoim koncie Supabase.</p>
+          </div>
+          <div className={styles.libraryControls}>
+            <strong>{savedReports.length}</strong>
+            <button
+              disabled={isLoadingSavedReports}
+              onClick={() => void loadSavedReports()}
+              type="button"
+            >
+              {isLoadingSavedReports ? "Odświeżam…" : "↻ Odśwież"}
+            </button>
+          </div>
+        </header>
+
+        {savedReportsError ? (
+          <p className={styles.libraryError} role="alert">
+            {savedReportsError}
+          </p>
+        ) : null}
+
+        {isLoadingSavedReports && savedReports.length === 0 ? (
+          <div className={styles.libraryLoading} aria-live="polite">
+            <span className={styles.spinner} aria-hidden="true" />
+            Pobieram zapisane raporty…
+          </div>
+        ) : null}
+
+        {!isLoadingSavedReports &&
+        !savedReportsError &&
+        savedReports.length === 0 ? (
+          <div className={styles.libraryEmpty}>
+            <span aria-hidden="true">▤</span>
+            <p>Nie masz jeszcze zapisanych raportów.</p>
+          </div>
+        ) : null}
+
+        {savedReports.length > 0 ? (
+          <ul className={styles.reportList}>
+            {savedReports.map((savedReport) => (
+              <li key={savedReport.id}>
+                <button
+                  aria-current={
+                    savedReportId === savedReport.id ? "true" : undefined
+                  }
+                  disabled={Boolean(openingReportId) || isLoading}
+                  onClick={() => void openSavedReport(savedReport.id)}
+                  type="button"
+                >
+                  <span className={styles.reportListIcon} aria-hidden="true">
+                    📄
+                  </span>
+                  <span className={styles.reportListContent}>
+                    <strong>{savedReport.topic}</strong>
+                    <small>
+                      {formatReportDate(savedReport.createdAt)}
+                      <i aria-hidden="true" />
+                      {savedReport.wordCount} słów
+                      <i aria-hidden="true" />
+                      {savedReport.sourceCount} źródeł
+                    </small>
+                  </span>
+                  <span className={styles.openLabel}>
+                    {openingReportId === savedReport.id
+                      ? "Otwieram…"
+                      : savedReportId === savedReport.id
+                        ? "Otwarto"
+                        : "Otwórz →"}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </section>
+
       {error ? (
         <div className={styles.error} role="alert">
           <span aria-hidden="true">!</span>
           <div>
-            <strong>Generowanie raportu nie powiodło się</strong>
+            <strong>Operacja nie powiodła się</strong>
             <p>{error}</p>
           </div>
         </div>
@@ -318,10 +515,20 @@ export default function ReportPage() {
       ) : null}
 
       {report ? (
-        <section className={styles.result} aria-label="Wygenerowany raport">
+        <section
+          className={styles.result}
+          aria-label="Wygenerowany raport"
+          ref={resultRef}
+        >
           <header className={styles.resultHeader}>
             <div>
-              <span>{isLoading ? "RAPORT POWSTAJE" : "GOTOWY RAPORT"}</span>
+              <span>
+                {isLoading
+                  ? "RAPORT POWSTAJE"
+                  : savedReportId
+                    ? "ZAPISANY RAPORT"
+                    : "GOTOWY RAPORT"}
+              </span>
               <div className={styles.stats}>
                 <span>{stats.words} słów</span>
                 <i aria-hidden="true" />
@@ -358,7 +565,7 @@ export default function ReportPage() {
 
           {savedReportId ? (
             <p className={styles.savedNotice} role="status">
-              Raport został bezpiecznie zapisany na Twoim koncie.
+              Raport znajduje się w Twojej prywatnej bibliotece.
               <span>ID: {savedReportId}</span>
             </p>
           ) : null}
