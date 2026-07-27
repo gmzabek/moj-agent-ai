@@ -77,12 +77,19 @@ export function useSupabaseConversation({
   const [isStartingConversation, setIsStartingConversation] = useState(false);
   const [memoryError, setMemoryError] = useState<string | null>(null);
   const conversationIdRef = useRef<string | null>(null);
+  const conversationUserIdRef = useRef<string | null>(null);
+  const currentUserIdRef = useRef(user?.id ?? null);
   const createConversationPromiseRef = useRef<Promise<string> | null>(null);
   const hasUserMessageRef = useRef(false);
   const isRestoringRef = useRef(true);
   const savedMessageIdsRef = useRef(new Set<string>());
   const savingMessageIdsRef = useRef(new Set<string>());
   const ignoredMessageIdsRef = useRef(new Set<string>());
+  const saveQueueRef = useRef(Promise.resolve());
+
+  useEffect(() => {
+    currentUserIdRef.current = user?.id ?? null;
+  }, [user?.id]);
 
   const createConversation = useCallback(async (title: string) => {
     if (!user) {
@@ -100,7 +107,12 @@ export function useSupabaseConversation({
       throw error;
     }
 
+    if (currentUserIdRef.current !== user.id) {
+      throw new Error("Użytkownik zmienił się podczas zapisu rozmowy.");
+    }
+
     conversationIdRef.current = data.id;
+    conversationUserIdRef.current = user.id;
     setConversationId(data.id);
 
     return data.id as string;
@@ -108,19 +120,28 @@ export function useSupabaseConversation({
 
   const ensureConversation = useCallback(
     async (title: string) => {
-      if (conversationIdRef.current) {
+      if (
+        conversationIdRef.current &&
+        conversationUserIdRef.current === user?.id
+      ) {
         return conversationIdRef.current;
       }
 
+      conversationIdRef.current = null;
+      conversationUserIdRef.current = null;
+
       if (!createConversationPromiseRef.current) {
-        createConversationPromiseRef.current = createConversation(title).finally(() => {
-          createConversationPromiseRef.current = null;
+        const createPromise = createConversation(title).finally(() => {
+          if (createConversationPromiseRef.current === createPromise) {
+            createConversationPromiseRef.current = null;
+          }
         });
+        createConversationPromiseRef.current = createPromise;
       }
 
       return createConversationPromiseRef.current;
     },
-    [createConversation],
+    [createConversation, user?.id],
   );
 
   const startNewConversation = useCallback(async () => {
@@ -128,6 +149,7 @@ export function useSupabaseConversation({
     setMemoryError(null);
     setMessages([]);
     conversationIdRef.current = null;
+    conversationUserIdRef.current = null;
     setConversationId(null);
     hasUserMessageRef.current = false;
     savedMessageIdsRef.current = new Set();
@@ -159,6 +181,15 @@ export function useSupabaseConversation({
       isRestoringRef.current = true;
       setIsRestoringConversation(true);
       setMemoryError(null);
+      conversationIdRef.current = null;
+      conversationUserIdRef.current = null;
+      createConversationPromiseRef.current = null;
+      hasUserMessageRef.current = false;
+      savedMessageIdsRef.current = new Set();
+      savingMessageIdsRef.current = new Set();
+      ignoredMessageIdsRef.current = new Set();
+      setConversationId(null);
+      setMessages([]);
 
       try {
         const requestedConversationId = new URLSearchParams(
@@ -207,6 +238,7 @@ export function useSupabaseConversation({
         );
 
         conversationIdRef.current = conversation.id;
+        conversationUserIdRef.current = user.id;
         setConversationId(conversation.id);
         hasUserMessageRef.current = restoredMessages.some(
           (message) => message.role === "user",
@@ -244,16 +276,20 @@ export function useSupabaseConversation({
       return;
     }
 
-    let isCancelled = false;
     const isAnswerStreaming = status === "submitted" || status === "streaming";
     const lastMessageId = messages.at(-1)?.id;
+    const hasAnyUserMessage = messages.some(
+      (message) =>
+        message.role === "user" && getMessageText(message).length > 0,
+    );
     const messagesToSave = messages.filter((message) => {
       const roleCanBeSaved =
         message.role === "user" || message.role === "assistant";
       const content = getMessageText(message);
       const isLatestStreamingAssistant =
         isAnswerStreaming && message.role === "assistant" && message.id === lastMessageId;
-      const isInitialGreeting = message.role === "assistant" && !hasUserMessageRef.current;
+      const isInitialGreeting =
+        message.role === "assistant" && !hasAnyUserMessage;
 
       if (isInitialGreeting) {
         ignoredMessageIdsRef.current.add(message.id);
@@ -274,21 +310,25 @@ export function useSupabaseConversation({
       return;
     }
 
+    for (const message of messagesToSave) {
+      savingMessageIdsRef.current.add(message.id);
+    }
+
     async function saveMessages() {
+      const saveUserId = user?.id;
+
       for (const message of messagesToSave) {
-        if (isCancelled) {
-          return;
-        }
-
-        savingMessageIdsRef.current.add(message.id);
-
         try {
+          if (!saveUserId || currentUserIdRef.current !== saveUserId) {
+            continue;
+          }
+
           const content = getMessageText(message);
           const title = createConversationTitle(content);
           const currentConversationId = await ensureConversation(title);
 
-          if (isCancelled) {
-            return;
+          if (currentUserIdRef.current !== saveUserId) {
+            continue;
           }
 
           const { error: insertError } = await supabase.from("messages").insert({
@@ -335,11 +375,7 @@ export function useSupabaseConversation({
       }
     }
 
-    void saveMessages();
-
-    return () => {
-      isCancelled = true;
-    };
+    saveQueueRef.current = saveQueueRef.current.then(saveMessages, saveMessages);
   }, [ensureConversation, messages, status, user]);
 
   return {
