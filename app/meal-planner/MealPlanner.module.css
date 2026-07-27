@@ -1,0 +1,25 @@
+.page { width: min(980px, calc(100% - 40px)); margin: 0 auto; padding: 48px 0 80px; }
+.page > header { margin-bottom: 28px; }
+.page > header > span, .result header span { color: #88f0b3; font-size: .72rem; font-weight: 900; letter-spacing: .14em; }
+.page h1 { margin: 9px 0 0; color: #fff; font-size: clamp(2rem, 4vw, 3.1rem); letter-spacing: -.045em; }
+.page > header p { max-width: 680px; margin: 12px 0 0; color: #a4adbd; line-height: 1.6; }
+.card, .result, .progress { border: 1px solid rgba(255,255,255,.1); border-radius: 14px; background: linear-gradient(145deg, rgba(255,255,255,.04), transparent 55%), #101219; box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 20px 60px rgba(0,0,0,.2); }
+.card { display: grid; gap: 18px; padding: 22px; }
+.card label { display: grid; gap: 8px; color: #c8ced9; font-size: .78rem; font-weight: 800; }
+.grid { display: grid; grid-template-columns: 1fr 160px; gap: 14px; }
+.card input, .card select, .card textarea { width: 100%; border: 1px solid rgba(255,255,255,.12); border-radius: 9px; padding: 12px; outline: 0; background: #090b10; color: #edf0f6; }
+.card textarea { min-height: 180px; resize: vertical; font-family: inherit; line-height: 1.55; }
+.card input:focus, .card select:focus, .card textarea:focus { border-color: rgba(136,240,179,.62); box-shadow: 0 0 0 3px rgba(136,240,179,.08); }
+.actions, .actions > div, .result header { display: flex; align-items: center; gap: 9px; }
+.actions { justify-content: space-between; }
+.actions > div { flex-wrap: wrap; }
+.actions button, .result header button, .progress button { min-height: 36px; border: 1px solid rgba(143,184,255,.32); border-radius: 8px; padding: 0 12px; background: rgba(143,184,255,.08); color: #c8d9ff; cursor: pointer; font-size: .78rem; font-weight: 800; }
+.actions .primary { min-height: 44px; border-color: rgba(136,240,179,.44); background: linear-gradient(145deg, rgba(136,240,179,.22), rgba(136,240,179,.08)), #101912; color: #e0fff0; }
+button:disabled, textarea:disabled, input:disabled, select:disabled { cursor: not-allowed; opacity: .55; }
+.error { margin: 18px 0 0; border: 1px solid rgba(248,113,113,.38); border-radius: 10px; padding: 13px 15px; background: rgba(248,113,113,.08); color: #ffd0d0; }
+.progress { display: flex; justify-content: space-between; margin-top: 18px; padding: 14px 16px; color: #cbd2df; font-size: .84rem; }
+.result { margin-top: 24px; overflow: hidden; }
+.result header { justify-content: space-between; padding: 19px 21px; border-bottom: 1px solid rgba(255,255,255,.08); }
+.result h2 { margin: 5px 0 0; color: #f7f8fb; font-size: 1.28rem; }
+.result article { padding: 24px; color: #dde2ec; line-height: 1.65; }
+@media (max-width: 680px) { .page { width: min(100% - 24px, 980px); padding-top: 30px; } .grid { grid-template-columns: 1fr; } .actions, .result header { align-items: stretch; flex-direction: column; } .actions .primary, .progress button { width: 100%; } .progress { align-items: stretch; flex-direction: column; gap: 10px; } }
