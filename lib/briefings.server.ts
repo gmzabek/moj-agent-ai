@@ -3,6 +3,15 @@ import { createClient } from "@supabase/supabase-js";
 export type BriefingInsert = {
   date: string;
   content: string;
+  user_id?: string | null;
+};
+
+export type BriefingRecord = {
+  id: string;
+  created_at: string;
+  content: string;
+  date: string;
+  user_id: string | null;
 };
 
 function getSupabaseAdmin() {
@@ -35,4 +44,21 @@ export async function saveBriefing(briefing: BriefingInsert) {
   }
 
   return data as { id: string; created_at: string };
+}
+
+export async function listBriefingsForUser(userId: string, limit = 30) {
+  const { data, error } = await getSupabaseAdmin()
+    .from("briefings")
+    .select("*")
+    .or(`user_id.is.null,user_id.eq.${userId}`)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throw new Error(
+      `Nie udało się pobrać briefingów z Supabase: ${error.message}`,
+    );
+  }
+
+  return (data ?? []) as BriefingRecord[];
 }
