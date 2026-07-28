@@ -10,7 +10,6 @@ const sidebarItems = [
   { href: "/report", icon: "📊", label: "Raporty" },
   { href: "/competitor", icon: "🏢", label: "Konkurencja" },
   { href: "/meal-planner", icon: "🍽️", label: "Planer posiłków" },
-  { href: "/generator-produktow-shopify", icon: "🛡️", label: "Generator produktów Shopify" },
   { href: "/city-break-planner", icon: "✈️", label: "Podróże" },
   { href: "/react", icon: "🔄", label: "ReAct" },
   { href: "/chat", icon: "💬", label: "Chat" },
