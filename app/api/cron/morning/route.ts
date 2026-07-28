@@ -43,11 +43,6 @@ Zasady:
 - Nie twórz linków, jeśli nie ma ich w danych.
 - Nie dodawaj wstępu ani zakończenia poza wskazanym formatem.`;
 
-function isAuthorized(request: Request) {
-  const secret = process.env.CRON_SECRET?.trim();
-  return !secret || request.headers.get("authorization") === `Bearer ${secret}`;
-}
-
 function errorMessage(error: unknown) {
   if (error instanceof Error) {
     if (error.name === "AbortError") {
@@ -59,7 +54,20 @@ function errorMessage(error: unknown) {
 }
 
 export async function GET(request: Request) {
-  if (!isAuthorized(request)) {
+  const cronSecret = process.env.CRON_SECRET?.trim();
+
+  if (!cronSecret) {
+    console.error("Morning briefing failed: CRON_SECRET is not configured.");
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Brakuje CRON_SECRET w zmiennych środowiskowych serwera.",
+      },
+      { status: 500 },
+    );
+  }
+
+  if (request.headers.get("authorization") !== `Bearer ${cronSecret}`) {
     return NextResponse.json(
       { success: false, error: "Brak autoryzacji." },
       { status: 401 },

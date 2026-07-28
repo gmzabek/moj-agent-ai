@@ -14,9 +14,24 @@ Endpoint `GET /api/cron/morning`:
 1. Skopiuj `.env.example` do `.env.local` i uzupełnij wartości.
 2. Wykonaj migrację `supabase/migrations/20260728000000_briefings.sql` w Supabase.
 3. Uruchom `npm install`, a następnie `npm run dev`.
-4. Otwórz `http://localhost:3000/api/cron/morning`.
+4. Wywołaj endpoint z nagłówkiem autoryzacji, na przykład:
 
-Jeśli ustawisz `CRON_SECRET`, wywołanie musi zawierać nagłówek:
+```bash
+curl -H "Authorization: Bearer <CRON_SECRET>" \
+  http://localhost:3000/api/cron/morning
+```
+
+## Automatyczne uruchamianie na Vercel
+
+Plik `vercel.json` rejestruje zadanie cron wywołujące
+`/api/cron/morning` codziennie o `07:00 UTC`.
+
+Endpoint wymaga zmiennej `CRON_SECRET`. Dodaj tę samą wartość:
+
+1. lokalnie w `.env.local`,
+2. w ustawieniach projektu Vercel: Environment Variables.
+
+Vercel Cron automatycznie wysyła ją w nagłówku:
 
 ```text
 Authorization: Bearer <CRON_SECRET>
