@@ -36,3 +36,23 @@ Vercel Cron automatycznie wysyła ją w nagłówku:
 ```text
 Authorization: Bearer <CRON_SECRET>
 ```
+
+## Webhook zdarzeń
+
+Endpoint `POST /api/webhook` przyjmuje zdarzenia `feedback`, `alert` i `order`,
+analizuje je przez Gemini, a następnie zapisuje oryginalne dane i analizę
+w tabeli `webhook_events`.
+
+Przed użyciem wykonaj migrację:
+
+```text
+supabase/migrations/20260728010000_webhook_events.sql
+```
+
+Przykładowy test:
+
+```bash
+curl -X POST http://localhost:3000/api/webhook \
+  -H "Content-Type: application/json" \
+  -d '{"type":"feedback","data":{"customer":"Jan","rating":2,"comment":"Długi czas oczekiwania na odpowiedź"}}'
+```
