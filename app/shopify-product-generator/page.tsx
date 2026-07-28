@@ -1,26 +1,91 @@
 "use client";
 
-import { useState } from "react";
+import { FormEvent, useState } from "react";
 import { authenticatedFetch } from "../../lib/authenticatedFetch";
-
-type Product = { name: string; url: string; category: string; price: string; images: string[]; documentsPdf: string[] };
+import { MarkdownView } from "../components/MarkdownView";
 
 export default function ShopifyProductGeneratorPage() {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [name, setName] = useState("");
+  const [sourceUrl, setSourceUrl] = useState("");
+  const [sourceText, setSourceText] = useState("");
+  const [content, setContent] = useState("");
   const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
 
-  async function crawlProducts() {
-    if (isLoading) return;
-    setIsLoading(true); setError("");
+  async function generate(event: FormEvent) {
+    event.preventDefault();
+    if (loading || (!sourceUrl && !sourceText)) return;
+
+    setLoading(true);
+    setError("");
+    setCopied(false);
+
     try {
-      const response = await authenticatedFetch("/api/batrea-crawler", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ maxProducts: 20 }) });
-      const data = await response.json().catch(() => null) as { error?: string; products?: Product[] } | null;
-      if (!response.ok || !data?.products) throw new Error(data?.error || "Crawler nie zwrócił produktów.");
-      setProducts(data.products);
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "Crawler nie ukończył pracy."); }
-    finally { setIsLoading(false); }
+      const response = await authenticatedFetch("/api/shopify-product-content", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name, sourceUrl, sourceText }),
+      });
+      const data = (await response.json().catch(() => null)) as { error?: string; content?: string } | null;
+
+      if (!response.ok || !data?.content) {
+        throw new Error(data?.error || "Nie udało się wygenerować treści.");
+      }
+
+      setContent(data.content);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Błąd generatora.");
+    } finally {
+      setLoading(false);
+    }
   }
 
-  return <main className="shell"><header className="react-header"><p className="eyebrow">PLAYWRIGHT CRAWLER</p><h1>🛡️ Shopify product generator</h1><p>Crawl produktów Batrea renderowanych w JavaScript: opisy, specyfikacje, ceny, warianty, obrazy i dokumenty PDF.</p></header><section className="side-panel"><h2>Eksport danych źródłowych</h2><p>Respektuje robots.txt i ogranicza tempo do jednego żądania na sekundę.</p><button className="send-button" disabled={isLoading} onClick={() => void crawlProducts()} type="button">{isLoading ? "Crawluję katalog…" : "Pobierz produkty Batrea"}</button></section>{error ? <p className="error-box">{error}</p> : null}{products.length > 0 ? <section className="side-panel" style={{ marginTop: "1rem" }}><h2>Zebrane produkty ({products.length})</h2><ul>{products.map((product) => <li key={product.url} style={{ margin: "1rem 0" }}><strong>{product.name}</strong><br /><small>{product.category} · {product.price}</small><br /><a href={product.url} rel="noreferrer" target="_blank">Źródło</a><br /><small>{product.images.length} obrazów · {product.documentsPdf.length} PDF</small></li>)}</ul></section> : null}</main>;
+  async function copyContent() {
+    await navigator.clipboard.writeText(content);
+    setCopied(true);
+  }
+
+  return (
+    <main className="shell">
+      <header className="react-header">
+        <p className="eyebrow">SHOPIFY CONTENT</p>
+        <h1>🛡️ Shopify product generator</h1>
+        <p>Przygotowuje polską kartę produktu dla Shopify/Matrixify wyłącznie na podstawie podanych danych producenta.</p>
+      </header>
+
+      <form className="side-panel" onSubmit={generate}>
+        <label>
+          Nazwa/model produktu
+          <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Np. Sejf na broń ABC 12" />
+        </label>
+        <label>
+          URL producenta (opcjonalnie)
+          <input value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} placeholder="https://producent.pl/produkt/..." />
+        </label>
+        <label>
+          Surowe dane techniczne lub tekst z karty katalogowej/PDF
+          <textarea value={sourceText} onChange={(event) => setSourceText(event.target.value)} placeholder="Wymiary, waga, klasa, zamek, certyfikaty, opis, warianty…" />
+        </label>
+        <p className="muted">Brakujące parametry są oznaczane jako „brak danych – do uzupełnienia”; generator ich nie dopowiada.</p>
+        <button className="send-button" disabled={loading || (!sourceUrl && !sourceText)}>
+          {loading ? "Generuję…" : "Wygeneruj treść produktu"}
+        </button>
+      </form>
+
+      {error ? <p className="error-box">{error}</p> : null}
+
+      {content ? (
+        <section className="side-panel" style={{ marginTop: "1rem" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "center" }}>
+            <h2>Gotowa karta produktu</h2>
+            <button className="secondary-button" onClick={() => void copyContent()} type="button">
+              {copied ? "Skopiowano" : "Kopiuj całość"}
+            </button>
+          </div>
+          <MarkdownView text={content} />
+        </section>
+      ) : null}
+    </main>
+  );
 }
