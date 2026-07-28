@@ -15,8 +15,10 @@
     "@supabase/supabase-js": "^2.110.5",
     "ai": "latest",
     "next": "16.2.11",
+    "pdf-parse": "^2.4.5",
     "react": "latest",
     "react-dom": "latest",
+    "xlsx": "^0.18.5",
     "zod": "latest"
   },
   "devDependencies": {
