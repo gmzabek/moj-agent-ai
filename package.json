@@ -15,6 +15,7 @@
     "@supabase/supabase-js": "^2.110.5",
     "ai": "latest",
     "next": "16.2.11",
+    "playwright": "^1.62.0",
     "react": "latest",
     "react-dom": "latest",
     "zod": "latest"
