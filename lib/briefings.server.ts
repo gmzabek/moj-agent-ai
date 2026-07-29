@@ -15,16 +15,29 @@ export type BriefingRecord = {
 };
 
 function getSupabaseAdmin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = (
+    process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL
+  )?.trim();
+  const serviceRoleKey = (
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY
+  )?.trim();
+  const missingVariables: string[] = [];
 
-  if (!url || !serviceRoleKey) {
+  if (!url) {
+    missingVariables.push("NEXT_PUBLIC_SUPABASE_URL");
+  }
+
+  if (!serviceRoleKey) {
+    missingVariables.push("SUPABASE_SERVICE_ROLE_KEY");
+  }
+
+  if (missingVariables.length > 0) {
     throw new Error(
-      "Brakuje NEXT_PUBLIC_SUPABASE_URL lub SUPABASE_SERVICE_ROLE_KEY.",
+      `Brakuje w środowisku serwerowym Vercel: ${missingVariables.join(", ")}. Dodaj zmienną dla Production i wykonaj Redeploy.`,
     );
   }
 
-  return createClient(url, serviceRoleKey, {
+  return createClient(url!, serviceRoleKey!, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
