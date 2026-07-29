@@ -101,6 +101,19 @@ export type ManagerialAccountingTopic = {
   interpretation: string;
 };
 
+export type AgentBuilderLesson = {
+  title: string;
+  skill: string;
+  practice: string;
+  pitfall: string;
+  inspiration: {
+    project: string;
+    built: string;
+    benefit: string;
+    url: string;
+  };
+};
+
 async function fetchWithTimeout(
   input: string,
   init: RequestInit = {},
@@ -781,4 +794,135 @@ export function getManagerialAccountingTopic(
   return MANAGERIAL_ACCOUNTING_TOPICS[
     seed % MANAGERIAL_ACCOUNTING_TOPICS.length
   ];
+}
+
+const AGENT_BUILDER_LESSONS: AgentBuilderLesson[] = [
+  {
+    title: "Projektuj narzędzia agenta z jednoznacznym kontraktem",
+    skill:
+      "Każde narzędzie powinno mieć jedną odpowiedzialność, jasny opis oraz ścisły schemat wejścia i wyjścia. Dzięki temu model łatwiej wybiera właściwą funkcję i przekazuje poprawne argumenty.",
+    practice:
+      "Zaprojektuj narzędzie get_customer z jednym wymaganym customerId i wynikiem zawierającym tylko id, name oraz status.",
+    pitfall:
+      "Nie łącz odczytu, edycji i usuwania danych w jednym narzędziu — utrudnia to kontrolę błędów i uprawnień.",
+    inspiration: {
+      project: "OpenHands",
+      built:
+        "Społeczność stworzyła agentów programistycznych pracujących z kodem, terminalem i repozytoriami.",
+      benefit:
+        "Automatyzują powtarzalne prace inżynierskie i pozwalają zlecić agentowi całe, sprawdzalne zadanie zamiast pojedynczej podpowiedzi.",
+      url: "https://github.com/OpenHands/OpenHands",
+    },
+  },
+  {
+    title: "Stosuj zasadę najmniejszych uprawnień",
+    skill:
+      "Agent powinien otrzymywać tylko te narzędzia, katalogi, domeny i operacje, których potrzebuje do bieżącego zadania. Operacje zapisujące lub usuwające dane warto oddzielać od odczytu.",
+    practice:
+      "Spisz allowlistę domen i operacji dla jednego agenta, a wszystko poza listą domyślnie zablokuj.",
+    pitfall:
+      "Nie przekazuj agentowi klucza administracyjnego, jeśli wystarcza klucz ograniczony przez role albo polityki dostępu.",
+    inspiration: {
+      project: "browser-use",
+      built:
+        "Twórcy udostępnili bibliotekę, dzięki której agent może wykonywać zadania w przeglądarce i poruszać się po stronach.",
+      benefit:
+        "Pozwala automatyzować ręczne klikanie i przepisywanie danych, zachowując możliwość ograniczenia miejsc, które agent może odwiedzać.",
+      url: "https://github.com/browser-use/browser-use",
+    },
+  },
+  {
+    title: "Izoluj projekt Pythona w środowisku wirtualnym",
+    skill:
+      "Środowisko venv oddziela biblioteki projektu od globalnego Pythona. Plik requirements.txt utrwala wersje potrzebne do odtworzenia aplikacji na innym komputerze.",
+    practice:
+      "Utwórz środowisko poleceniem python -m venv .venv, aktywuj je i zapisz zależności przez python -m pip freeze.",
+    pitfall:
+      "Nie dodawaj katalogu .venv ani plików z sekretami do repozytorium; umieść je w .gitignore.",
+    inspiration: {
+      project: "Home Assistant",
+      built:
+        "Społeczność zbudowała w Pythonie otwartą platformę, która łączy urządzenia i automatyzacje inteligentnego domu.",
+      benefit:
+        "Jedno lokalne centrum sterowania zastępuje wiele aplikacji i automatyzuje codzienne czynności przy większej kontroli nad prywatnością.",
+      url: "https://www.home-assistant.io/",
+    },
+  },
+  {
+    title: "Zamień powtarzalne polecenia VS Code w zadania",
+    skill:
+      "Plik .vscode/tasks.json może uruchamiać testy, lint lub build pod stałą nazwą. Człowiek i agent korzystają wtedy z tego samego, powtarzalnego sposobu weryfikacji.",
+    practice:
+      "Dodaj zadanie verify, które uruchamia npm run typecheck oraz npm run lint, i ustaw je jako domyślne zadanie testowe.",
+    pitfall:
+      "Nie zapisuj w konfiguracji ścieżek zależnych od jednego komputera ani wartości zmiennych środowiskowych.",
+    inspiration: {
+      project: "Dify",
+      built:
+        "Twórcy stworzyli wizualne środowisko łączące przepływy AI, RAG, narzędzia, modele i obserwowalność aplikacji.",
+      benefit:
+        "Zespół może szybciej przejść od prototypu do działającego agenta i wspólnie analizować jego przepływ bez czytania całego kodu.",
+      url: "https://github.com/langgenius/dify",
+    },
+  },
+  {
+    title: "Rozdziel klucze Supabase i włącz RLS",
+    skill:
+      "Klucz publiczny może działać w przeglądarce tylko razem z poprawnymi politykami Row Level Security. Klucz service role omija RLS, dlatego powinien być używany wyłącznie po stronie serwera.",
+    practice:
+      "Dla jednej tabeli napisz politykę SELECT pozwalającą użytkownikowi odczytać tylko rekordy, których user_id odpowiada auth.uid().",
+    pitfall:
+      "Nigdy nie używaj SUPABASE_SERVICE_ROLE_KEY w komponencie klienckim ani w zmiennej zaczynającej się od NEXT_PUBLIC_.",
+    inspiration: {
+      project: "Open WebUI",
+      built:
+        "Społeczność stworzyła samodzielnie hostowany interfejs do modeli, wiedzy, narzędzi i agentów.",
+      benefit:
+        "Użytkownicy zyskują jedno miejsce do pracy z różnymi modelami oraz większą kontrolę nad konfiguracją i danymi.",
+      url: "https://docs.openwebui.com/",
+    },
+  },
+  {
+    title: "Traktuj wdrożenie Vercel jako osobne środowisko",
+    skill:
+      "Kod z GitHub trafia do nowego deploymentu, ale zmienne środowiskowe i zapisane dane nie aktualizują się razem z nim. Production, Preview i lokalny komputer mogą mieć inne ustawienia.",
+    practice:
+      "Po wdrożeniu sprawdź hash commitu, status Ready i wykonaj jedno kontrolowane wywołanie endpointu, zamiast oceniać zmianę na podstawie starego rekordu.",
+    pitfall:
+      "Po zmianie zmiennej środowiskowej wykonaj redeploy; istniejący deployment nie zawsze otrzyma nową wartość automatycznie.",
+    inspiration: {
+      project: "n8n",
+      built:
+        "Twórcy i społeczność zbudowali platformę automatyzacji łączącą wizualne przepływy, kod, integracje i możliwości AI.",
+      benefit:
+        "Powtarzalne przekazywanie danych między usługami może działać według harmonogramu lub zdarzenia bez ręcznej obsługi.",
+      url: "https://github.com/n8n-io/n8n",
+    },
+  },
+  {
+    title: "Kontroluj katalog roboczy w PowerShell",
+    skill:
+      "Polecenia Git, npm i skrypty działają względem bieżącego katalogu. Get-Location pokazuje aktualne miejsce, a Set-Location przenosi terminal do katalogu projektu.",
+    practice:
+      "Przed pracą wykonaj Get-Location, git status oraz git branch --show-current i dopiero potem uruchamiaj commit albo push.",
+    pitfall:
+      "Nie wykonuj poleceń Git z katalogu użytkownika — komunikat not a git repository oznacza zwykle niewłaściwy katalog.",
+    inspiration: {
+      project: "Flowise",
+      built:
+        "Społeczność stworzyła wizualny kreator agentów i przepływów LLM z narzędziami, RAG, ewaluacją oraz human-in-the-loop.",
+      benefit:
+        "Pozwala szybko zobaczyć logikę agenta i testować pomysły, zanim powstanie rozbudowana aplikacja pisana od zera.",
+      url: "https://docs.flowiseai.com/",
+    },
+  },
+];
+
+export function getAgentBuilderLesson(date: string): AgentBuilderLesson {
+  const seed = Array.from(date).reduce(
+    (total, character) => total + character.charCodeAt(0),
+    0,
+  );
+
+  return AGENT_BUILDER_LESSONS[seed % AGENT_BUILDER_LESSONS.length];
 }

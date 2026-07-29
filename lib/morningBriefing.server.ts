@@ -3,6 +3,7 @@ import { generateText } from "ai";
 import { saveBriefing } from "@/lib/briefings.server";
 import {
   currentDateTime,
+  getAgentBuilderLesson,
   getBibleQuote,
   getExchangeRate,
   getManagerialAccountingTopic,
@@ -57,6 +58,15 @@ const systemPrompt = `Jesteś osobistym asystentem. Napisz poranny briefing po p
 - Zastosowanie: [do czego służy i dlaczego jest ważne]
 - Interpretacja: [jak czytać wynik]
 
+## 🛠️ Warsztat twórcy agentów
+### Umiejętność dnia: [przekazany tytuł]
+[krótkie wyjaśnienie przekazanej umiejętności]
+- Zrób dziś: [przekazane ćwiczenie]
+- Uważaj na: [przekazana pułapka]
+
+### Inspiracja: [nazwa przekazanego projektu]
+[co zbudowano i jak ułatwia to życie lub pracę] — [Źródło]([przekazany URL])
+
 Zasady:
 - Nie wymyślaj faktów i nie dodawaj danych spoza wejścia.
 - Zachowaj dokładnie podane kursy, waluty, zmiany procentowe i datę notowania.
@@ -66,6 +76,7 @@ Zasady:
 - Cytat biblijny przytocz dokładnie, bez przerabiania, i pozostaw go w języku angielskim.
 - Cytat z Biblii musi być pierwszą sekcją bezpośrednio pod głównym nagłówkiem briefingu.
 - Sekcję managerial accounting oprzyj wyłącznie na przekazanym temacie, zachowaj wzór i zmieść ją w pięciu krótkich punktach.
+- Sekcję warsztatową oprzyj wyłącznie na przekazanej lekcji i inspiracji. Zachowaj konkretny krok praktyczny, ostrzeżenie oraz link źródłowy.
 - Nie twórz linków, jeśli nie ma ich w danych.
 - Nie dodawaj wstępu ani zakończenia poza wskazanym formatem.`;
 
@@ -130,6 +141,7 @@ export async function generateAndSaveMorningBriefing(userId?: string) {
     news,
     bibleQuote: getBibleQuote(dateTime.date),
     managerialAccountingTopic: getManagerialAccountingTopic(dateTime.date),
+    agentBuilderLesson: getAgentBuilderLesson(dateTime.date),
   };
 
   const { text } = await generateText({
