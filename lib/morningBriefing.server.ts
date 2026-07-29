@@ -58,7 +58,7 @@ Zasady:
 - Nie nazywaj MSFT, NVDA ani AMZN akcjami NYSE — są notowane na Nasdaq. NVO jest notowane na NYSE.
 - Przegląd PB ma być zwięzłą parafrazą, a nie kopią leadów ani całych artykułów.
 - Jeśli opcjonalne źródło jest niedostępne, napisz krótko „dane chwilowo niedostępne” i kontynuuj briefing.
-- Cytat biblijny przytocz dokładnie, bez przerabiania.
+- Cytat biblijny przytocz dokładnie, bez przerabiania, i pozostaw go w języku angielskim.
 - Nie twórz linków, jeśli nie ma ich w danych.
 - Nie dodawaj wstępu ani zakończenia poza wskazanym formatem.`;
 

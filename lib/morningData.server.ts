@@ -89,7 +89,7 @@ export type UnusualHolidayContext = {
 export type BibleQuote = {
   text: string;
   reference: string;
-  translation: "Biblia Gdańska (1632)";
+  translation: "Douay-Rheims 1899 American Edition";
 };
 
 async function fetchWithTimeout(
@@ -623,39 +623,39 @@ export async function getUnusualHolidayContext(
 
 const BIBLE_QUOTES: BibleQuote[] = [
   {
-    text: "Wszystko mogę w Chrystusie, który mię posila.",
-    reference: "List do Filipian 4,13",
-    translation: "Biblia Gdańska (1632)",
+    text: "I can do all these things in him who strengtheneth me.",
+    reference: "Philippians 4:13",
+    translation: "Douay-Rheims 1899 American Edition",
   },
   {
-    text: "Błogosławieni pokój czyniący; albowiem oni synami Bożymi nazwani będą.",
-    reference: "Ewangelia Mateusza 5,9",
-    translation: "Biblia Gdańska (1632)",
+    text: "Blessed are the peacemakers: for they shall be called children of God.",
+    reference: "Matthew 5:9",
+    translation: "Douay-Rheims 1899 American Edition",
   },
   {
-    text: "Radujcie się zawsze w Panu; zasię mówię, radujcie się.",
-    reference: "List do Filipian 4,4",
-    translation: "Biblia Gdańska (1632)",
+    text: "Rejoice in the Lord always; again, I say, rejoice.",
+    reference: "Philippians 4:4",
+    translation: "Douay-Rheims 1899 American Edition",
   },
   {
-    text: "A teraz zostaje wiara, nadzieja, miłość, te trzy rzeczy; lecz z nich największa miłość.",
-    reference: "1 List do Koryntian 13,13",
-    translation: "Biblia Gdańska (1632)",
+    text: "And now there remain faith, hope, and charity, these three: but the greatest of these is charity.",
+    reference: "1 Corinthians 13:13",
+    translation: "Douay-Rheims 1899 American Edition",
   },
   {
-    text: "Bądźcie jedni ku drugim dobrotliwi, miłosierni, odpuszczając sobie.",
-    reference: "List do Efezjan 4,32",
-    translation: "Biblia Gdańska (1632)",
+    text: "And be ye kind one to another; merciful, forgiving one another, even as God hath forgiven you in Christ.",
+    reference: "Ephesians 4:32",
+    translation: "Douay-Rheims 1899 American Edition",
   },
   {
-    text: "Weselcie się nadzieją, w ucisku bądźcie cierpliwi, w modlitwie ustawiczni.",
-    reference: "List do Rzymian 12,12",
-    translation: "Biblia Gdańska (1632)",
+    text: "Rejoicing in hope; patient in tribulation; continuing instant in prayer.",
+    reference: "Romans 12:12",
+    translation: "Douay-Rheims 1899 American Edition",
   },
   {
-    text: "Wszystkie rzeczy wasze niech się dzieją w miłości.",
-    reference: "1 List do Koryntian 16,14",
-    translation: "Biblia Gdańska (1632)",
+    text: "Let all your things be done in charity.",
+    reference: "1 Corinthians 16:14",
+    translation: "Douay-Rheims 1899 American Edition",
   },
 ];
 
