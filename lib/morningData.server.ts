@@ -1,6 +1,9 @@
 const DEFAULT_TIMEOUT_MS = 10_000;
 const DEFAULT_NEWS_RSS_URL =
   "https://news.google.com/rss?hl=pl&gl=PL&ceid=PL:pl";
+const DEFAULT_PB_EDITION_URL = "https://www.pb.pl/wydanie";
+const DEFAULT_UNUSUAL_HOLIDAYS_BASE_URL =
+  "https://www.kalbi.pl/kalendarz-swiat-nietypowych";
 
 export type Weather = {
   city: string;
@@ -42,6 +45,51 @@ export type NewsHeadline = {
   title: string;
   link: string;
   publishedAt: string | null;
+};
+
+export type MarketQuote = {
+  symbol: string;
+  name: string;
+  market: "Nasdaq" | "NYSE" | "GPW";
+  currency: string;
+  price: number;
+  previousClose: number | null;
+  changePercent: number | null;
+  asOf: string;
+  source: "Yahoo Finance";
+};
+
+export type MarketOverview = {
+  quotes: MarketQuote[];
+  unavailableSymbols: string[];
+  note: string;
+};
+
+export type PbEditionArticle = {
+  title: string;
+  lead: string;
+  page: string | null;
+  link: string;
+};
+
+export type PbEdition = {
+  title: string;
+  url: string;
+  articles: PbEditionArticle[];
+  source: "Puls Biznesu";
+};
+
+export type UnusualHolidayContext = {
+  date: string;
+  holidays: string[];
+  url: string;
+  source: "Kalbi.pl";
+};
+
+export type BibleQuote = {
+  text: string;
+  reference: string;
+  translation: "Biblia Gdańska (1632)";
 };
 
 async function fetchWithTimeout(
@@ -271,6 +319,11 @@ function decodeXml(value: string) {
     "&quot;": '"',
     "&#39;": "'",
     "&apos;": "'",
+    "&nbsp;": " ",
+    "&ndash;": "–",
+    "&mdash;": "—",
+    "&bdquo;": "„",
+    "&rdquo;": "”",
   };
 
   return value
@@ -281,8 +334,20 @@ function decodeXml(value: string) {
     .replace(/&#x([0-9a-f]+);/gi, (_, code: string) =>
       String.fromCodePoint(Number.parseInt(code, 16)),
     )
-    .replace(/&(amp|lt|gt|quot|apos|#39);/g, (entity) => entities[entity] ?? entity)
+    .replace(
+      /&(amp|lt|gt|quot|apos|#39|nbsp|ndash|mdash|bdquo|rdquo);/g,
+      (entity) => entities[entity] ?? entity,
+    )
     .trim();
+}
+
+function htmlText(value: string) {
+  return decodeXml(
+    value
+      .replace(/<script\b[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style\b[\s\S]*?<\/style>/gi, " ")
+      .replace(/<[^>]+>/g, " "),
+  ).replace(/\s+/g, " ");
 }
 
 function readXmlTag(item: string, tag: string) {
@@ -325,4 +390,280 @@ export async function getTopNews(limit = 5): Promise<NewsHeadline[]> {
   }
 
   return headlines;
+}
+
+type MarketInstrument = {
+  symbol: string;
+  name: string;
+  market: MarketQuote["market"];
+};
+
+const MARKET_INSTRUMENTS: MarketInstrument[] = [
+  { symbol: "MSFT", name: "Microsoft", market: "Nasdaq" },
+  { symbol: "NVDA", name: "Nvidia", market: "Nasdaq" },
+  { symbol: "NVO", name: "Novo Nordisk ADR", market: "NYSE" },
+  { symbol: "AMZN", name: "Amazon", market: "Nasdaq" },
+  { symbol: "WIG20.WA", name: "WIG20", market: "GPW" },
+  { symbol: "PKO.WA", name: "PKO BP", market: "GPW" },
+  { symbol: "PKN.WA", name: "Orlen", market: "GPW" },
+  { symbol: "PZU.WA", name: "PZU", market: "GPW" },
+  { symbol: "KGH.WA", name: "KGHM", market: "GPW" },
+  { symbol: "CDR.WA", name: "CD Projekt", market: "GPW" },
+];
+
+async function getMarketQuote(
+  instrument: MarketInstrument,
+): Promise<MarketQuote> {
+  type YahooChartResponse = {
+    chart: {
+      error: { description?: string } | null;
+      result:
+        | Array<{
+            meta: {
+              chartPreviousClose?: number;
+              currency?: string;
+              regularMarketPrice?: number;
+              regularMarketTime?: number;
+            };
+            indicators?: {
+              quote?: Array<{ close?: Array<number | null> }>;
+            };
+          }>
+        | null;
+    };
+  };
+
+  const data = await fetchJson<YahooChartResponse>(
+    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+      instrument.symbol,
+    )}?range=5d&interval=1d`,
+  );
+  const result = data.chart.result?.[0];
+  const price = result?.meta.regularMarketPrice;
+
+  if (!result || !Number.isFinite(price)) {
+    throw new Error(
+      data.chart.error?.description ??
+        `Brak aktualnego notowania ${instrument.symbol}.`,
+    );
+  }
+
+  const closes =
+    result.indicators?.quote?.[0]?.close?.filter(
+      (value): value is number => typeof value === "number",
+    ) ?? [];
+  const previousClose =
+    result.meta.chartPreviousClose ??
+    (closes.length > 1 ? closes[closes.length - 2] : null);
+  const changePercent =
+    previousClose && Number.isFinite(previousClose)
+      ? ((price! - previousClose) / previousClose) * 100
+      : null;
+
+  return {
+    symbol: instrument.symbol.replace(".WA", ""),
+    name: instrument.name,
+    market: instrument.market,
+    currency: result.meta.currency ?? (instrument.market === "GPW" ? "PLN" : "USD"),
+    price: price!,
+    previousClose,
+    changePercent,
+    asOf: result.meta.regularMarketTime
+      ? new Date(result.meta.regularMarketTime * 1000).toISOString()
+      : new Date().toISOString(),
+    source: "Yahoo Finance",
+  };
+}
+
+export async function getMarketOverview(): Promise<MarketOverview> {
+  const results = await Promise.allSettled(
+    MARKET_INSTRUMENTS.map((instrument) => getMarketQuote(instrument)),
+  );
+  const quotes = results
+    .filter(
+      (result): result is PromiseFulfilledResult<MarketQuote> =>
+        result.status === "fulfilled",
+    )
+    .map((result) => result.value);
+  const unavailableSymbols = results
+    .map((result, index) =>
+      result.status === "rejected" ? MARKET_INSTRUMENTS[index].symbol : null,
+    )
+    .filter((symbol): symbol is string => symbol !== null);
+
+  if (quotes.length === 0) {
+    throw new Error("Źródło notowań nie zwróciło żadnych danych.");
+  }
+
+  return {
+    quotes,
+    unavailableSymbols,
+    note:
+      "Notowania informacyjne, mogą być opóźnione. MSFT, NVDA i AMZN są notowane na Nasdaq; NVO na NYSE.",
+  };
+}
+
+export function parsePbEdition(html: string, limit = 7): PbEdition {
+  const heading =
+    html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ??
+    "Aktualne wydanie Pulsu Biznesu";
+  const itemMatches =
+    html.match(
+      /<li[^>]*class="[^"]*m-listing-article-list__item[^"]*"[^>]*>[\s\S]*?<\/li>/gi,
+    ) ?? [];
+  const articles = itemMatches
+    .map((item): PbEditionArticle | null => {
+      const link = item.match(
+        /<a[^>]*class="[^"]*m-listing-article-list__anchor[^"]*"[^>]*href="([^"]+)"/i,
+      )?.[1];
+      const title = item.match(
+        /<div[^>]*class="[^"]*m-listing-article-list__title[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+      )?.[1];
+      const lead = item.match(
+        /<div[^>]*class="[^"]*m-listing-article-list__lead[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+      )?.[1];
+      const page = item.match(
+        /<div[^>]*class="[^"]*m-listing-article-list__page-number[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+      )?.[1];
+
+      if (!link || !title) {
+        return null;
+      }
+
+      return {
+        title: htmlText(title),
+        lead: lead ? htmlText(lead).slice(0, 420) : "",
+        page: page ? htmlText(page) : null,
+        link: decodeXml(link),
+      };
+    })
+    .filter((article): article is PbEditionArticle => article !== null)
+    .slice(0, limit);
+
+  if (articles.length === 0) {
+    throw new Error("Nie udało się odczytać listy artykułów z wydania PB.");
+  }
+
+  return {
+    title: htmlText(heading),
+    url: DEFAULT_PB_EDITION_URL,
+    articles,
+    source: "Puls Biznesu",
+  };
+}
+
+export async function getPulsBiznesuEdition(limit = 7): Promise<PbEdition> {
+  const url = process.env.PB_EDITION_URL || DEFAULT_PB_EDITION_URL;
+  const response = await fetchWithTimeout(url, {
+    headers: { Accept: "text/html,application/xhtml+xml" },
+  });
+  const edition = parsePbEdition(await response.text(), limit);
+
+  return { ...edition, url };
+}
+
+const POLISH_MONTH_SLUGS = [
+  "styczen",
+  "luty",
+  "marzec",
+  "kwiecien",
+  "maj",
+  "czerwiec",
+  "lipiec",
+  "sierpien",
+  "wrzesien",
+  "pazdziernik",
+  "listopad",
+  "grudzien",
+];
+
+export function parseUnusualHolidays(html: string, day: number) {
+  const article = html.match(
+    new RegExp(
+      `<article[^>]*class="[^"]*unusual-day[^"]*"[^>]*id="${day}"[^>]*>([\\s\\S]*?)<\\/article>`,
+      "i",
+    ),
+  )?.[1];
+
+  if (!article) {
+    return [];
+  }
+
+  return Array.from(
+    article.matchAll(/<h3[^>]*>[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>[\s\S]*?<\/h3>/gi),
+    (match) => htmlText(match[1]),
+  ).filter(Boolean);
+}
+
+export async function getUnusualHolidayContext(
+  dateTime: CurrentDateTime,
+): Promise<UnusualHolidayContext> {
+  const [year, month, day] = dateTime.date.split("-").map(Number);
+  const monthSlug = POLISH_MONTH_SLUGS[month - 1];
+
+  if (!monthSlug || !day) {
+    throw new Error("Nieprawidłowa data dla kalendarza świąt nietypowych.");
+  }
+
+  const baseUrl =
+    process.env.UNUSUAL_HOLIDAYS_BASE_URL ||
+    DEFAULT_UNUSUAL_HOLIDAYS_BASE_URL;
+  const url = `${baseUrl}-${monthSlug}-${year}`;
+  const response = await fetchWithTimeout(url, {
+    headers: { Accept: "text/html,application/xhtml+xml" },
+  });
+
+  return {
+    date: dateTime.date,
+    holidays: parseUnusualHolidays(await response.text(), day),
+    url,
+    source: "Kalbi.pl",
+  };
+}
+
+const BIBLE_QUOTES: BibleQuote[] = [
+  {
+    text: "Wszystko mogę w Chrystusie, który mię posila.",
+    reference: "List do Filipian 4,13",
+    translation: "Biblia Gdańska (1632)",
+  },
+  {
+    text: "Błogosławieni pokój czyniący; albowiem oni synami Bożymi nazwani będą.",
+    reference: "Ewangelia Mateusza 5,9",
+    translation: "Biblia Gdańska (1632)",
+  },
+  {
+    text: "Radujcie się zawsze w Panu; zasię mówię, radujcie się.",
+    reference: "List do Filipian 4,4",
+    translation: "Biblia Gdańska (1632)",
+  },
+  {
+    text: "A teraz zostaje wiara, nadzieja, miłość, te trzy rzeczy; lecz z nich największa miłość.",
+    reference: "1 List do Koryntian 13,13",
+    translation: "Biblia Gdańska (1632)",
+  },
+  {
+    text: "Bądźcie jedni ku drugim dobrotliwi, miłosierni, odpuszczając sobie.",
+    reference: "List do Efezjan 4,32",
+    translation: "Biblia Gdańska (1632)",
+  },
+  {
+    text: "Weselcie się nadzieją, w ucisku bądźcie cierpliwi, w modlitwie ustawiczni.",
+    reference: "List do Rzymian 12,12",
+    translation: "Biblia Gdańska (1632)",
+  },
+  {
+    text: "Wszystkie rzeczy wasze niech się dzieją w miłości.",
+    reference: "1 List do Koryntian 16,14",
+    translation: "Biblia Gdańska (1632)",
+  },
+];
+
+export function getBibleQuote(date: string): BibleQuote {
+  const seed = Array.from(date).reduce(
+    (total, character) => total + character.charCodeAt(0),
+    0,
+  );
+
+  return BIBLE_QUOTES[seed % BIBLE_QUOTES.length];
 }
