@@ -5,6 +5,7 @@ import {
   currentDateTime,
   getBibleQuote,
   getExchangeRate,
+  getManagerialAccountingTopic,
   getMarketOverview,
   getPolishDayContext,
   getPulsBiznesuEdition,
@@ -49,8 +50,12 @@ const systemPrompt = `Jesteś osobistym asystentem. Napisz poranny briefing po p
 - Święto ustawowe lub dzień wolny: [...]
 - Nietypowe święta: [...]
 
-## 💡 Porada dnia
-[Krótka, pozytywna i konkretna porada na dzień]
+## 🧮 Managerial accounting — temat dnia
+- Temat: [nazwa przekazanego wskaźnika lub zagadnienia]
+- Wzór: [przekazany wzór]
+- Dane: [krótko: skąd pochodzą wartości użyte we wzorze]
+- Zastosowanie: [do czego służy i dlaczego jest ważne]
+- Interpretacja: [jak czytać wynik]
 
 Zasady:
 - Nie wymyślaj faktów i nie dodawaj danych spoza wejścia.
@@ -60,6 +65,7 @@ Zasady:
 - Jeśli opcjonalne źródło jest niedostępne, napisz krótko „dane chwilowo niedostępne” i kontynuuj briefing.
 - Cytat biblijny przytocz dokładnie, bez przerabiania, i pozostaw go w języku angielskim.
 - Cytat z Biblii musi być pierwszą sekcją bezpośrednio pod głównym nagłówkiem briefingu.
+- Sekcję managerial accounting oprzyj wyłącznie na przekazanym temacie, zachowaj wzór i zmieść ją w pięciu krótkich punktach.
 - Nie twórz linków, jeśli nie ma ich w danych.
 - Nie dodawaj wstępu ani zakończenia poza wskazanym formatem.`;
 
@@ -123,6 +129,7 @@ export async function generateAndSaveMorningBriefing(userId?: string) {
     pulsBiznesu,
     news,
     bibleQuote: getBibleQuote(dateTime.date),
+    managerialAccountingTopic: getManagerialAccountingTopic(dateTime.date),
   };
 
   const { text } = await generateText({

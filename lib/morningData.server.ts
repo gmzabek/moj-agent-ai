@@ -92,6 +92,15 @@ export type BibleQuote = {
   translation: "NRSVue Catholic Edition";
 };
 
+export type ManagerialAccountingTopic = {
+  name: string;
+  formula: string;
+  inputs: string;
+  purpose: string;
+  importance: string;
+  interpretation: string;
+};
+
 async function fetchWithTimeout(
   input: string,
   init: RequestInit = {},
@@ -666,4 +675,110 @@ export function getBibleQuote(date: string): BibleQuote {
   );
 
   return BIBLE_QUOTES[seed % BIBLE_QUOTES.length];
+}
+
+const MANAGERIAL_ACCOUNTING_TOPICS: ManagerialAccountingTopic[] = [
+  {
+    name: "Contribution margin ratio (wskaźnik marży pokrycia)",
+    formula:
+      "(przychody ze sprzedaży − koszty zmienne) ÷ przychody ze sprzedaży × 100%",
+    inputs:
+      "Przychody pochodzą z raportu sprzedaży, a koszty zmienne z ewidencji kosztów zależnych od wolumenu.",
+    purpose:
+      "Pokazuje, jaka część każdej złotówki sprzedaży pozostaje na pokrycie kosztów stałych i zysku.",
+    importance:
+      "Pomaga oceniać rentowność produktów, decyzje cenowe i wpływ zmiany struktury sprzedaży.",
+    interpretation:
+      "Wyższy wynik zwykle oznacza większy wkład sprzedaży w wynik; spadek może wskazywać na wzrost kosztów zmiennych albo presję cenową.",
+  },
+  {
+    name: "Break-even point (próg rentowności)",
+    formula:
+      "koszty stałe ÷ (cena jednostkowa − jednostkowy koszt zmienny)",
+    inputs:
+      "Koszty stałe pochodzą z budżetu kosztów, a cena i koszt zmienny na jednostkę z danych sprzedażowych i kalkulacji produktu.",
+    purpose:
+      "Wyznacza liczbę jednostek, przy której przychody dokładnie pokrywają wszystkie koszty.",
+    importance:
+      "Ułatwia planowanie wolumenu, cen i ocenę ryzyka nowego produktu lub inwestycji.",
+    interpretation:
+      "Sprzedaż powyżej progu tworzy zysk operacyjny, a poniżej progu powoduje stratę; niższy próg oznacza zwykle mniejsze ryzyko.",
+  },
+  {
+    name: "Margin of safety (margines bezpieczeństwa)",
+    formula:
+      "(sprzedaż rzeczywista lub planowana − sprzedaż na progu rentowności) ÷ sprzedaż rzeczywista lub planowana × 100%",
+    inputs:
+      "Sprzedaż pochodzi z raportu wykonania lub budżetu, a sprzedaż progowa z analizy progu rentowności.",
+    purpose:
+      "Pokazuje, o ile sprzedaż może spaść, zanim działalność zacznie przynosić stratę.",
+    importance:
+      "Jest prostą miarą odporności wyniku na spadek popytu.",
+    interpretation:
+      "Wyższy procent oznacza większy bufor bezpieczeństwa; niski wynik sygnalizuje wysoką wrażliwość na nawet niewielki spadek sprzedaży.",
+  },
+  {
+    name: "Degree of operating leverage (dźwignia operacyjna)",
+    formula: "marża pokrycia ÷ zysk operacyjny",
+    inputs:
+      "Marża pokrycia wynika ze sprzedaży pomniejszonej o koszty zmienne, a zysk operacyjny z rachunku wyników zarządczych.",
+    purpose:
+      "Szacuje wrażliwość zysku operacyjnego na procentową zmianę sprzedaży przy danym poziomie działalności.",
+    importance:
+      "Pokazuje ryzyko związane z wysokim udziałem kosztów stałych.",
+    interpretation:
+      "Dźwignia równa 3 oznacza, że zmiana sprzedaży o 1% może zmienić zysk operacyjny o około 3%; wysoki wynik zwiększa potencjał zysku i ryzyko straty.",
+  },
+  {
+    name: "ROI centrum inwestycyjnego",
+    formula:
+      "zysk operacyjny ÷ średnie aktywa operacyjne × 100%",
+    inputs:
+      "Zysk operacyjny pochodzi z raportu segmentu, a średnie aktywa z bilansu zarządczego na początek i koniec okresu.",
+    purpose:
+      "Mierzy efektywność wykorzystania aktywów powierzonych menedżerowi.",
+    importance:
+      "Pozwala porównywać jednostki o różnej skali i łączy rentowność sprzedaży z obrotem aktywów.",
+    interpretation:
+      "Wyższy ROI oznacza większy zysk z każdej złotówki aktywów, ale należy porównać go z kosztem kapitału i uważać, by nie zniechęcał do opłacalnych inwestycji.",
+  },
+  {
+    name: "Residual income (dochód rezydualny)",
+    formula:
+      "zysk operacyjny − (wymagana stopa zwrotu × średnie aktywa operacyjne)",
+    inputs:
+      "Zysk i aktywa pochodzą z raportów segmentu, a wymagana stopa zwrotu z polityki finansowej firmy.",
+    purpose:
+      "Pokazuje kwotę zysku wypracowaną ponad minimalny koszt kapitału zaangażowanego w jednostkę.",
+    importance:
+      "Pomaga oceniać, czy decyzje menedżera rzeczywiście tworzą wartość, także gdy obniżają procentowy ROI.",
+    interpretation:
+      "Wynik dodatni oznacza zwrot powyżej wymaganego minimum; wynik ujemny wskazuje, że jednostka nie pokrywa kosztu zaangażowanego kapitału.",
+  },
+  {
+    name: "Odchylenie ceny materiałów",
+    formula:
+      "(rzeczywista cena − cena standardowa) × rzeczywista ilość zakupionych materiałów",
+    inputs:
+      "Cena i ilość rzeczywista pochodzą z faktur oraz ewidencji zakupów, a cena standardowa z budżetu lub karty kosztu standardowego.",
+    purpose:
+      "Oddziela wpływ ceny zakupu od wpływu zużycia materiałów na koszt produkcji.",
+    importance:
+      "Pomaga szybko wykryć zmianę cen dostawców, słabsze negocjacje albo zmianę jakości kupowanych materiałów.",
+    interpretation:
+      "Wynik dodatni jest zwykle odchyleniem niekorzystnym, a ujemny korzystnym; zawsze trzeba sprawdzić, czy niższa cena nie pogorszyła jakości lub zużycia.",
+  },
+];
+
+export function getManagerialAccountingTopic(
+  date: string,
+): ManagerialAccountingTopic {
+  const seed = Array.from(date).reduce(
+    (total, character) => total + character.charCodeAt(0),
+    0,
+  );
+
+  return MANAGERIAL_ACCOUNTING_TOPICS[
+    seed % MANAGERIAL_ACCOUNTING_TOPICS.length
+  ];
 }
