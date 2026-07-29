@@ -19,6 +19,9 @@ const systemPrompt = `Jesteś osobistym asystentem. Napisz poranny briefing po p
 
 # ☀️ Dzień dobry! Twój briefing na [data]
 
+## 📖 Cytat z Biblii
+„[dokładnie przekazany cytat]” — [siglum lub pełne odwołanie], [przekazany przekład]
+
 ## 🌤️ Pogoda
 [temperatura, opis, co ubrać]
 
@@ -46,9 +49,6 @@ const systemPrompt = `Jesteś osobistym asystentem. Napisz poranny briefing po p
 - Święto ustawowe lub dzień wolny: [...]
 - Nietypowe święta: [...]
 
-## 📖 Cytat z Biblii
-„[dokładnie przekazany cytat]” — [siglum lub pełne odwołanie], [przekazany przekład]
-
 ## 💡 Porada dnia
 [Krótka, pozytywna i konkretna porada na dzień]
 
@@ -59,6 +59,7 @@ Zasady:
 - Przegląd PB ma być zwięzłą parafrazą, a nie kopią leadów ani całych artykułów.
 - Jeśli opcjonalne źródło jest niedostępne, napisz krótko „dane chwilowo niedostępne” i kontynuuj briefing.
 - Cytat biblijny przytocz dokładnie, bez przerabiania, i pozostaw go w języku angielskim.
+- Cytat z Biblii musi być pierwszą sekcją bezpośrednio pod głównym nagłówkiem briefingu.
 - Nie twórz linków, jeśli nie ma ich w danych.
 - Nie dodawaj wstępu ani zakończenia poza wskazanym formatem.`;
 

@@ -89,7 +89,7 @@ export type UnusualHolidayContext = {
 export type BibleQuote = {
   text: string;
   reference: string;
-  translation: "Douay-Rheims 1899 American Edition";
+  translation: "NRSVue Catholic Edition";
 };
 
 async function fetchWithTimeout(
@@ -623,39 +623,39 @@ export async function getUnusualHolidayContext(
 
 const BIBLE_QUOTES: BibleQuote[] = [
   {
-    text: "I can do all these things in him who strengtheneth me.",
+    text: "I can do all things through him who strengthens me.",
     reference: "Philippians 4:13",
-    translation: "Douay-Rheims 1899 American Edition",
+    translation: "NRSVue Catholic Edition",
   },
   {
-    text: "Blessed are the peacemakers: for they shall be called children of God.",
+    text: "Blessed are the peacemakers, for they will be called children of God.",
     reference: "Matthew 5:9",
-    translation: "Douay-Rheims 1899 American Edition",
+    translation: "NRSVue Catholic Edition",
   },
   {
-    text: "Rejoice in the Lord always; again, I say, rejoice.",
+    text: "Rejoice in the Lord always; again I will say, Rejoice.",
     reference: "Philippians 4:4",
-    translation: "Douay-Rheims 1899 American Edition",
+    translation: "NRSVue Catholic Edition",
   },
   {
-    text: "And now there remain faith, hope, and charity, these three: but the greatest of these is charity.",
+    text: "And now faith, hope, and love remain, these three, and the greatest of these is love.",
     reference: "1 Corinthians 13:13",
-    translation: "Douay-Rheims 1899 American Edition",
+    translation: "NRSVue Catholic Edition",
   },
   {
-    text: "And be ye kind one to another; merciful, forgiving one another, even as God hath forgiven you in Christ.",
+    text: "Be kind to one another, tenderhearted, forgiving one another, as God in Christ has forgiven you.",
     reference: "Ephesians 4:32",
-    translation: "Douay-Rheims 1899 American Edition",
+    translation: "NRSVue Catholic Edition",
   },
   {
-    text: "Rejoicing in hope; patient in tribulation; continuing instant in prayer.",
+    text: "Rejoice in hope; be patient in affliction; persevere in prayer.",
     reference: "Romans 12:12",
-    translation: "Douay-Rheims 1899 American Edition",
+    translation: "NRSVue Catholic Edition",
   },
   {
-    text: "Let all your things be done in charity.",
+    text: "Let all that you do be done in love.",
     reference: "1 Corinthians 16:14",
-    translation: "Douay-Rheims 1899 American Edition",
+    translation: "NRSVue Catholic Edition",
   },
 ];
 
