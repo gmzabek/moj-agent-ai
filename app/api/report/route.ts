@@ -2,6 +2,11 @@ import { google } from "@ai-sdk/google";
 import { stepCountIs, streamText } from "ai";
 import { z } from "zod";
 import {
+  enforceDailyTokenBudget,
+  recordApiUsage,
+} from "../../../lib/apiUsage.server";
+import { requireAuthenticatedUser } from "../../../lib/supabaseServer.server";
+import {
   calculatorTool,
   readWebPageTool,
   searchWikipediaTool,
@@ -90,6 +95,11 @@ function getFriendlyError(error: unknown) {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireAuthenticatedUser(request).catch(() => null);
+  if (!auth) return Response.json({ error: "Wymagane jest zalogowanie." }, { status: 401 });
+  const budgetResponse = await enforceDailyTokenBudget(auth.supabase);
+  if (budgetResponse) return budgetResponse;
+
   if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
     return Response.json(
       {
@@ -140,6 +150,15 @@ Przeprowadź research dostępnymi narzędziami, a następnie zwróć kompletny r
       stopWhen: stepCountIs(maxSteps),
       maxRetries: 1,
       temperature: 0.2,
+      onEnd: async ({ usage }) => {
+        await recordApiUsage({
+          supabase: auth.supabase,
+          userId: auth.user.id,
+          usage,
+          model: "gemini-3.1-flash-lite",
+          endpoint: "/api/report",
+        });
+      },
     });
 
     return result.toTextStreamResponse();

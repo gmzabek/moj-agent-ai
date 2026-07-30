@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { enforceDailyTokenBudget } from "../../../lib/apiUsage.server";
 import { searchKnowledgeBase } from "../../../lib/searchKnowledge.server";
 import { requireAuthenticatedUser } from "../../../lib/supabaseServer.server";
 
@@ -14,6 +15,9 @@ export async function POST(request: Request) {
       { status: 401 },
     );
   }
+
+  const budgetResponse = await enforceDailyTokenBudget(auth.supabase);
+  if (budgetResponse) return budgetResponse;
 
   try {
     const body = (await request.json()) as { query?: unknown };

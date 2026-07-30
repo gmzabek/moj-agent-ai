@@ -2,6 +2,10 @@ import { google } from "@ai-sdk/google";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { generateText, stepCountIs, tool } from "ai";
 import { z } from "zod";
+import {
+  enforceDailyTokenBudget,
+  recordApiUsage,
+} from "../../../lib/apiUsage.server";
 import { searchKnowledgeBase } from "../../../lib/searchKnowledge.server";
 import { requireAuthenticatedUser } from "../../../lib/supabaseServer.server";
 import {
@@ -189,7 +193,14 @@ function createBaseTools(supabase: SupabaseClient, userId: string) {
     }),
     execute: async ({ query }) => {
       try {
-        return await searchKnowledgeBase(supabase, userId, query);
+        return await searchKnowledgeBase(
+          supabase,
+          userId,
+          query,
+          0.5,
+          5,
+          "/api/react#searchKnowledge",
+        );
       } catch (error) {
         return {
           error: error instanceof Error ? error.message : "Nie udalo sie przeszukac bazy wiedzy.",
@@ -627,6 +638,11 @@ export async function POST(request: Request) {
   }
 
   const { supabase, user } = auth;
+  const budgetResponse = await enforceDailyTokenBudget(supabase);
+
+  if (budgetResponse) {
+    return budgetResponse;
+  }
 
   if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
     return Response.json(
@@ -739,6 +755,14 @@ export async function POST(request: Request) {
       savedFacts.length > 0 && failedMemoryClaim.test(result.text)
         ? `### Wynik końcowy\nZapisałem w Twoim profilu: ${savedFacts.join(", ")}. Będę korzystać z tych informacji w kolejnych rozmowach.`
         : result.text;
+
+    await recordApiUsage({
+      supabase,
+      userId: user.id,
+      usage: result.usage,
+      model: "gemini-3.1-flash-lite",
+      endpoint: "/api/react",
+    });
 
     return new Response(responseText, {
       headers: {

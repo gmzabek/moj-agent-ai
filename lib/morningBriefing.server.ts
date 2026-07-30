@@ -1,5 +1,7 @@
 import { google } from "@ai-sdk/google";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { generateText } from "ai";
+import { recordApiUsage } from "@/lib/apiUsage.server";
 import { saveBriefing } from "@/lib/briefings.server";
 import {
   currentDateTime,
@@ -105,7 +107,10 @@ export function getMorningBriefingErrorMessage(error: unknown) {
   return "Nieznany błąd podczas generowania briefingu.";
 }
 
-export async function generateAndSaveMorningBriefing(userId?: string) {
+export async function generateAndSaveMorningBriefing(
+  userId?: string,
+  usageContext?: { supabase: SupabaseClient; endpoint: string },
+) {
   const dateTime = currentDateTime();
   const [
     weather,
@@ -144,7 +149,7 @@ export async function generateAndSaveMorningBriefing(userId?: string) {
     agentBuilderLesson: getAgentBuilderLesson(dateTime.date),
   };
 
-  const { text } = await generateText({
+  const result = await generateText({
     model: google(MODEL_ID),
     system: systemPrompt,
     prompt:
@@ -152,7 +157,18 @@ export async function generateAndSaveMorningBriefing(userId?: string) {
       JSON.stringify(sourceData, null, 2),
     temperature: 0.25,
   });
-  const content = text.trim();
+
+  if (userId && usageContext) {
+    await recordApiUsage({
+      supabase: usageContext.supabase,
+      userId,
+      usage: result.usage,
+      model: MODEL_ID,
+      endpoint: usageContext.endpoint,
+    });
+  }
+
+  const content = result.text.trim();
 
   if (!content) {
     throw new Error("Model AI zwrócił pusty briefing.");

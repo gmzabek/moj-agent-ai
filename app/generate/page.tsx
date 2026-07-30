@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { authenticatedFetch } from "../../lib/authenticatedFetch";
 import { reportGeminiFallback } from "../components/geminiFallbackStatus";
 
 const examples = [
@@ -40,7 +41,7 @@ export default function GeneratePage() {
     setLastPrompt(cleanPrompt);
 
     try {
-      const response = await fetch("/api/generate-image", {
+      const response = await authenticatedFetch("/api/generate-image", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ prompt: cleanPrompt }),

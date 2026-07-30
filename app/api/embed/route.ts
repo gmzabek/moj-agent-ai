@@ -1,9 +1,22 @@
 import { NextResponse } from "next/server";
-import { generateEmbedding } from "../../../lib/embeddings";
+import {
+  enforceDailyTokenBudget,
+  recordEmbeddingUsage,
+} from "../../../lib/apiUsage.server";
+import {
+  estimateEmbeddingTokens,
+  generateEmbedding,
+} from "../../../lib/embeddings";
+import { requireAuthenticatedUser } from "../../../lib/supabaseServer.server";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  const auth = await requireAuthenticatedUser(request).catch(() => null);
+  if (!auth) return NextResponse.json({ error: "Wymagane jest zalogowanie." }, { status: 401 });
+  const budgetResponse = await enforceDailyTokenBudget(auth.supabase);
+  if (budgetResponse) return budgetResponse;
+
   try {
     const body = (await request.json()) as { text?: unknown };
     const text = typeof body.text === "string" ? body.text.trim() : "";
@@ -16,6 +29,12 @@ export async function POST(request: Request) {
     }
 
     const embedding = await generateEmbedding(text);
+    await recordEmbeddingUsage({
+      supabase: auth.supabase,
+      userId: auth.user.id,
+      estimatedInputTokens: estimateEmbeddingTokens(text),
+      endpoint: "/api/embed",
+    });
 
     return NextResponse.json({ embedding });
   } catch (error) {

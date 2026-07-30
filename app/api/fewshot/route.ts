@@ -9,6 +9,12 @@ import {
   type UIMessage,
   type UIMessageChunk,
 } from "ai";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  enforceDailyTokenBudget,
+  recordApiUsage,
+} from "../../../lib/apiUsage.server";
+import { requireAuthenticatedUser } from "../../../lib/supabaseServer.server";
 
 // AI SDK 5 uses stopWhen as the supported equivalent of maxSteps: 3.
 const maxSteps = 3;
@@ -116,9 +122,13 @@ function enqueueTextResponse(
 async function streamGeminiResponse({
   controller,
   modelMessages,
+  supabase,
+  userId,
 }: {
   controller: ReadableStreamDefaultController<UIMessageChunk>;
   modelMessages: ModelMessage[];
+  supabase: SupabaseClient;
+  userId: string;
 }) {
   const result = streamText({
     model: google("gemini-3.1-flash-lite"),
@@ -140,9 +150,22 @@ async function streamGeminiResponse({
       controller.enqueue(chunk);
     }
   }
+
+  await recordApiUsage({
+    supabase,
+    userId,
+    usage: await result.usage,
+    model: "gemini-3.1-flash-lite",
+    endpoint: "/api/fewshot",
+  });
 }
 
 export async function POST(req: Request) {
+  const auth = await requireAuthenticatedUser(req).catch(() => null);
+  if (!auth) return Response.json({ error: "Wymagane jest zalogowanie." }, { status: 401 });
+  const budgetResponse = await enforceDailyTokenBudget(auth.supabase);
+  if (budgetResponse) return budgetResponse;
+
   const { messages }: { messages: UIMessage[] } = await req.json();
   const modelMessages = await convertToModelMessages(messages);
   const lastUserText = getLastUserText(messages);
@@ -150,7 +173,12 @@ export async function POST(req: Request) {
   const stream = new ReadableStream<UIMessageChunk>({
     async start(controller) {
       try {
-        await streamGeminiResponse({ controller, modelMessages });
+        await streamGeminiResponse({
+          controller,
+          modelMessages,
+          supabase: auth.supabase,
+          userId: auth.user.id,
+        });
         controller.close();
       } catch (error) {
         if (isQuotaError(error)) {

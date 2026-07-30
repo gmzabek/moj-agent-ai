@@ -4,6 +4,9 @@ import {
   getMorningBriefingErrorMessage,
 } from "@/lib/morningBriefing.server";
 import {
+  enforceDailyTokenBudget,
+} from "@/lib/apiUsage.server";
+import {
   getApiErrorStatus,
   requireAuthenticatedUser,
 } from "@/lib/supabaseServer.server";
@@ -53,8 +56,17 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { user } = await requireAuthenticatedUser(request);
-    const briefing = await generateAndSaveMorningBriefing(user.id);
+    const { supabase, user } = await requireAuthenticatedUser(request);
+    const budgetResponse = await enforceDailyTokenBudget(supabase);
+
+    if (budgetResponse) {
+      return budgetResponse;
+    }
+
+    const briefing = await generateAndSaveMorningBriefing(user.id, {
+      supabase,
+      endpoint: "/api/cron/morning",
+    });
 
     return NextResponse.json(
       {

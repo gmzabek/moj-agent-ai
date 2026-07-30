@@ -10,6 +10,12 @@ type GeminiEmbeddingResponse = {
 const EMBEDDING_MODEL = "gemini-embedding-2";
 const EMBEDDING_DIMENSIONS = 768;
 
+// Gemini Embedding REST nie zwraca usageMetadata. Przyjmujemy konserwatywny
+// szacunek 1 token / 4 znaki i rozliczamy minimum jeden token.
+export function estimateEmbeddingTokens(text: string) {
+  return Math.max(1, Math.ceil(Array.from(text).length / 4));
+}
+
 export async function generateEmbedding(text: string) {
   const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 

@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { authenticatedFetch } from "../../lib/authenticatedFetch";
 import styles from "./EmailTriage.module.css";
 
 type Priority = "high" | "medium" | "low" | "pending";
@@ -235,7 +236,7 @@ export default function EmailTriagePage() {
     setCopiedMail(null);
 
     try {
-      const response = await fetch("/api/email-triage", {
+      const response = await authenticatedFetch("/api/email-triage", {
         body: JSON.stringify({ emails }),
         headers: { "content-type": "application/json" },
         method: "POST",

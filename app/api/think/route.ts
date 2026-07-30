@@ -1,5 +1,10 @@
 import { google } from "@ai-sdk/google";
 import { convertToModelMessages, stepCountIs, streamText, type UIMessage } from "ai";
+import {
+  enforceDailyTokenBudget,
+  recordApiUsage,
+} from "../../../lib/apiUsage.server";
+import { requireAuthenticatedUser } from "../../../lib/supabaseServer.server";
 
 // AI SDK 5 uses stopWhen as the supported equivalent of maxSteps: 3.
 const maxSteps = 3;
@@ -32,6 +37,11 @@ WAŻNE:
 - Odpowiadaj po polsku`;
 
 export async function POST(req: Request) {
+  const auth = await requireAuthenticatedUser(req).catch(() => null);
+  if (!auth) return Response.json({ error: "Wymagane jest zalogowanie." }, { status: 401 });
+  const budgetResponse = await enforceDailyTokenBudget(auth.supabase);
+  if (budgetResponse) return budgetResponse;
+
   const { messages }: { messages: UIMessage[] } = await req.json();
 
   const result = streamText({
@@ -39,6 +49,15 @@ export async function POST(req: Request) {
     system: systemPrompt,
     messages: await convertToModelMessages(messages),
     stopWhen: stepCountIs(maxSteps),
+    onEnd: async ({ usage }) => {
+      await recordApiUsage({
+        supabase: auth.supabase,
+        userId: auth.user.id,
+        usage,
+        model: "gemini-3.1-flash-lite",
+        endpoint: "/api/think",
+      });
+    },
   });
 
   return result.toUIMessageStreamResponse({

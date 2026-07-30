@@ -1,7 +1,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { splitIntoChunks } from "../../../lib/chunking";
-import { generateEmbedding, toPgVector } from "../../../lib/embeddings";
+import {
+  assertDailyTokenBudget,
+  enforceDailyTokenBudget,
+  recordEmbeddingUsage,
+} from "../../../lib/apiUsage.server";
+import {
+  estimateEmbeddingTokens,
+  generateEmbedding,
+  toPgVector,
+} from "../../../lib/embeddings";
 import { explainSupabaseRlsError } from "../../../lib/supabaseAdmin.server";
 import { requireAuthenticatedUser } from "../../../lib/supabaseServer.server";
 
@@ -54,7 +63,14 @@ async function saveKnowledge(
       total: chunks.length,
     });
 
+    await assertDailyTokenBudget(supabase);
     const embedding = await generateEmbedding(chunk);
+    await recordEmbeddingUsage({
+      supabase,
+      userId,
+      estimatedInputTokens: estimateEmbeddingTokens(chunk),
+      endpoint: "/api/upload-knowledge",
+    });
     const { error } = await supabase.from("documents").insert({
       content: chunk,
       created_at: new Date().toISOString(),
@@ -149,6 +165,9 @@ export async function POST(request: Request) {
       { status: 401 },
     );
   }
+
+  const budgetResponse = await enforceDailyTokenBudget(auth.supabase);
+  if (budgetResponse) return budgetResponse;
 
   try {
     const { content, title } = parseUploadBody((await request.json()) as UploadBody);

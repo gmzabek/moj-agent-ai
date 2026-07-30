@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { authenticatedFetch } from "../../lib/authenticatedFetch";
 import { reportGeminiFallback } from "../components/geminiFallbackStatus";
 import { MarkdownView } from "../components/MarkdownView";
 
@@ -32,7 +33,7 @@ export function CityBreakPlanner() {
     setPlan("");
 
     try {
-      const response = await fetch("/api/city-break", {
+      const response = await authenticatedFetch("/api/city-break", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({

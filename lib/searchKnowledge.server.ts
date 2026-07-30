@@ -1,5 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { generateEmbedding, toPgVector } from "./embeddings";
+import {
+  assertDailyTokenBudget,
+  recordEmbeddingUsage,
+} from "./apiUsage.server";
+import {
+  estimateEmbeddingTokens,
+  generateEmbedding,
+  toPgVector,
+} from "./embeddings";
 import { explainSupabaseRlsError } from "./supabaseAdmin.server";
 
 type MatchDocumentRow = {
@@ -92,6 +100,7 @@ export async function searchKnowledgeBase(
   query: string,
   matchThreshold = 0.5,
   matchCount = 5,
+  usageEndpoint = "/api/search-knowledge",
 ): Promise<KnowledgeSearchResponse> {
   const cleanQuery = query.trim();
 
@@ -99,7 +108,14 @@ export async function searchKnowledgeBase(
     throw new Error("Pytanie do bazy wiedzy jest wymagane.");
   }
 
+  await assertDailyTokenBudget(supabase);
   const embedding = await generateEmbedding(cleanQuery);
+  await recordEmbeddingUsage({
+    supabase,
+    userId,
+    estimatedInputTokens: estimateEmbeddingTokens(cleanQuery),
+    endpoint: usageEndpoint,
+  });
   const { data, error } = await supabase.rpc("match_documents", {
     match_count: matchCount,
     match_threshold: matchThreshold,

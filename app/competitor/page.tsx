@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { authenticatedFetch } from "../../lib/authenticatedFetch";
 import { MarkdownView } from "../components/MarkdownView";
 import styles from "./Competitor.module.css";
 
@@ -131,7 +132,7 @@ export default function CompetitorPage() {
     setIsCopied(false);
 
     try {
-      const response = await fetch("/api/competitor", {
+      const response = await authenticatedFetch("/api/competitor", {
         body: JSON.stringify({
           companies: normalizedCompanies,
           context: context.trim(),

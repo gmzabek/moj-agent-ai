@@ -16,6 +16,11 @@ import {
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  DAILY_TOKEN_LIMIT_MESSAGE,
+  enforceDailyTokenBudget,
+  recordApiUsage,
+} from "../../../lib/apiUsage.server";
+import {
   BLOCKED_INPUT_MESSAGE,
   BLOCKED_OUTPUT_MESSAGE,
   filterOutput,
@@ -275,7 +280,11 @@ function evaluateMathExpression(expression: string) {
   return result;
 }
 
-async function generateImageWithGemini(prompt: string) {
+async function generateImageWithGemini(
+  prompt: string,
+  supabase: SupabaseClient,
+  userId: string,
+) {
   const apiKey =
     process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 
@@ -291,6 +300,12 @@ async function generateImageWithGemini(prompt: string) {
 
   for (const imageModel of imageModels) {
     try {
+      const budgetResponse = await enforceDailyTokenBudget(supabase);
+
+      if (budgetResponse) {
+        return { error: DAILY_TOKEN_LIMIT_MESSAGE };
+      }
+
       const response = await withTimeout(
         ai.models.generateContent({
           model: imageModel,
@@ -304,6 +319,14 @@ async function generateImageWithGemini(prompt: string) {
       const parts = response.candidates?.[0]?.content?.parts ?? [];
       const imagePart = parts.find((part) => part.inlineData?.data);
       const textPart = parts.find((part) => part.text);
+
+      await recordApiUsage({
+        supabase,
+        userId,
+        usage: response.usageMetadata,
+        model: imageModel,
+        endpoint: "/api/chat#generateImage",
+      });
 
       if (!imagePart?.inlineData?.data) {
         return {
@@ -348,7 +371,14 @@ function createBaseTools(supabase: SupabaseClient, userId: string) {
     }),
     execute: async ({ query }) => {
       try {
-        return await searchKnowledgeBase(supabase, userId, query);
+        return await searchKnowledgeBase(
+          supabase,
+          userId,
+          query,
+          0.5,
+          5,
+          "/api/chat#searchKnowledge",
+        );
       } catch (error) {
         return {
           error: getErrorText(error),
@@ -538,7 +568,8 @@ function createBaseTools(supabase: SupabaseClient, userId: string) {
     inputSchema: z.object({
       prompt: z.string().describe("Szczegolowy opis obrazu do wygenerowania."),
     }),
-    execute: async ({ prompt }) => generateImageWithGemini(prompt),
+    execute: async ({ prompt }) =>
+      generateImageWithGemini(prompt, supabase, userId),
   }),
   };
 }
@@ -1080,11 +1111,15 @@ async function streamModelToController({
   modelMessages,
   agentTools,
   personalizedSystemPrompt,
+  supabase,
+  userId,
 }: {
   controller: ReadableStreamDefaultController<UIMessageChunk>;
   modelMessages: ModelMessage[];
   agentTools: AgentTools;
   personalizedSystemPrompt: string;
+  supabase: SupabaseClient;
+  userId: string;
 }) {
   const result = streamText({
     model: google(chatModelId),
@@ -1147,6 +1182,13 @@ async function streamModelToController({
       protectedFragments: protectedSystemPromptFragments,
     });
     const usage = await result.usage;
+    await recordApiUsage({
+      supabase,
+      userId,
+      usage,
+      model: chatModelId,
+      endpoint: "/api/chat",
+    });
 
     if (filteredOutput === BLOCKED_OUTPUT_MESSAGE) {
       enqueueTextResponse(
@@ -1181,12 +1223,16 @@ function createFallbackStream({
   lastUserText,
   agentTools,
   personalizedSystemPrompt,
+  supabase,
+  userId,
 }: {
   selectedModel: AiModel;
   modelMessages: ModelMessage[];
   lastUserText: string;
   agentTools: AgentTools;
   personalizedSystemPrompt: string;
+  supabase: SupabaseClient;
+  userId: string;
 }) {
   return new ReadableStream<UIMessageChunk>({
     async start(controller) {
@@ -1196,6 +1242,8 @@ function createFallbackStream({
           modelMessages,
           agentTools,
           personalizedSystemPrompt,
+          supabase,
+          userId,
         });
         controller.close();
       } catch (error) {
@@ -1233,6 +1281,12 @@ export async function POST(req: Request) {
   }
 
   const { supabase, user } = auth;
+  const budgetResponse = await enforceDailyTokenBudget(supabase);
+
+  if (budgetResponse) {
+    return budgetResponse;
+  }
+
   const rateLimit = messageRateLimiter.check(user.id);
 
   if (!rateLimit.allowed) {
@@ -1403,6 +1457,8 @@ export async function POST(req: Request) {
     lastUserText,
     agentTools,
     personalizedSystemPrompt,
+    supabase,
+    userId,
   });
 
   return createUIMessageStreamResponse({

@@ -7,7 +7,7 @@
     "build": "next build",
     "check:supabase": "node scripts/check-supabase-w1.mjs",
     "lint": "eslint .",
-    "test": "node --test security.test.mjs",
+    "test": "node --test security.test.mjs lib/apiUsage.server.test.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

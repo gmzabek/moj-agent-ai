@@ -1,4 +1,9 @@
 import { GoogleGenAI, Modality } from "@google/genai";
+import {
+  enforceDailyTokenBudget,
+  recordApiUsage,
+} from "../../../lib/apiUsage.server";
+import { requireAuthenticatedUser } from "../../../lib/supabaseServer.server";
 
 const imageModels = ["gemini-3.1-flash-lite-image"];
 // Limits image-generation fallback attempts consistently with the API step budget.
@@ -59,6 +64,11 @@ function withTimeout<T>(promise: Promise<T>, milliseconds: number) {
 }
 
 export async function POST(req: Request) {
+  const auth = await requireAuthenticatedUser(req).catch(() => null);
+  if (!auth) return Response.json({ error: "Wymagane jest zalogowanie." }, { status: 401 });
+  const budgetResponse = await enforceDailyTokenBudget(auth.supabase);
+  if (budgetResponse) return budgetResponse;
+
   const { prompt }: { prompt?: unknown } = await req.json();
   const cleanPrompt = typeof prompt === "string" ? prompt.trim() : "";
   const apiKey =
@@ -124,6 +134,14 @@ export async function POST(req: Request) {
     }
 
     const mimeType = imagePart.inlineData.mimeType || "image/png";
+
+    await recordApiUsage({
+      supabase: auth.supabase,
+      userId: auth.user.id,
+      usage: response.usageMetadata,
+      model: imageModels[0],
+      endpoint: "/api/generate-image",
+    });
 
     return Response.json({
       image: `data:${mimeType};base64,${imagePart.inlineData.data}`,

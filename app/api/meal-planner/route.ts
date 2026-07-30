@@ -1,6 +1,10 @@
 import { google } from "@ai-sdk/google";
 import { streamText } from "ai";
 import { z } from "zod";
+import {
+  enforceDailyTokenBudget,
+  recordApiUsage,
+} from "../../../lib/apiUsage.server";
 import { requireAuthenticatedUser } from "../../../lib/supabaseServer.server";
 
 export const runtime = "nodejs";
@@ -28,6 +32,8 @@ Pogrupuj składniki; podaj przybliżone ilości dla wskazanej liczby osób.
 export async function POST(request: Request) {
   const auth = await requireAuthenticatedUser(request).catch(() => null);
   if (!auth) return Response.json({ error: "Wymagane jest zalogowanie." }, { status: 401 });
+  const budgetResponse = await enforceDailyTokenBudget(auth.supabase);
+  if (budgetResponse) return budgetResponse;
   if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
     return Response.json({ error: "Brak GOOGLE_GENERATIVE_AI_API_KEY." }, { status: 500 });
   }
@@ -43,6 +49,15 @@ export async function POST(request: Request) {
       system: systemPrompt,
       prompt: `Dieta: ${diet}\nLiczba osób: ${servings}\nPreferencje i ograniczenia: ${preferences}`,
       temperature: 0.35,
+      onEnd: async ({ usage }) => {
+        await recordApiUsage({
+          supabase: auth.supabase,
+          userId: auth.user.id,
+          usage,
+          model: "gemini-3.1-flash-lite",
+          endpoint: "/api/meal-planner",
+        });
+      },
     }).toTextStreamResponse();
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "Nie udało się przygotować planu." }, { status: 500 });

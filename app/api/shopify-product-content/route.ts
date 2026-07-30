@@ -1,6 +1,10 @@
 import { google } from "@ai-sdk/google";
 import { generateObject } from "ai";
 import { z } from "zod";
+import {
+  enforceDailyTokenBudget,
+  recordApiUsage,
+} from "../../../lib/apiUsage.server";
 import { requireAuthenticatedUser } from "../../../lib/supabaseServer.server";
 
 export const runtime = "nodejs";
@@ -134,6 +138,8 @@ function stripHtml(html: string) {
 export async function POST(request: Request) {
   const auth = await requireAuthenticatedUser(request).catch(() => null);
   if (!auth) return Response.json({ error: "Wymagane jest zalogowanie." }, { status: 401 });
+  const budgetResponse = await enforceDailyTokenBudget(auth.supabase);
+  if (budgetResponse) return budgetResponse;
 
   let requestData: { body: unknown; pdfText: string };
   try {
@@ -169,6 +175,14 @@ export async function POST(request: Request) {
       prompt: `Nazwa/model: ${parsed.data.name || missing}\nDane wklejone: ${parsed.data.sourceText || missing}\nTekst z PDF: ${requestData.pdfText || missing}\nTreść strony źródłowej: ${pageText || missing}\nDla matrixifyRows przygotuj jeden wiersz dla każdego wariantu; gdy nie ma wariantów, jeden wiersz. Użyj Command=MERGE, Status=Draft, Published=FALSE. W "Body HTML" użyj poprawnego HTML z h2/h3/p/ul/li. Wszystkie klucze metapól zdefiniowane w schemacie muszą mieć wartość źródłową albo "${missing}".`,
       temperature: 0.2,
       maxRetries: 1,
+    });
+
+    await recordApiUsage({
+      supabase: auth.supabase,
+      userId: auth.user.id,
+      usage: result.usage,
+      model: "gemini-3.1-flash-lite",
+      endpoint: "/api/shopify-product-content",
     });
 
     return Response.json(result.object);

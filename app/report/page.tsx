@@ -172,7 +172,7 @@ export default function ReportPage() {
     setSavedReportId(null);
 
     try {
-      const response = await fetch("/api/report", {
+      const response = await authenticatedFetch("/api/report", {
         body: JSON.stringify({ topic: normalizedTopic }),
         headers: { "content-type": "application/json" },
         method: "POST",

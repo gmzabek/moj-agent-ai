@@ -136,7 +136,7 @@ export default function VisionPage() {
   }
 
   async function generateFromVision(promptText: string) {
-    const response = await fetch("/api/generate-image", {
+    const response = await authenticatedFetch("/api/generate-image", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ prompt: promptText }),

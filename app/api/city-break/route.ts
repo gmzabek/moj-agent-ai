@@ -1,6 +1,11 @@
 import { google } from "@ai-sdk/google";
 import { generateText, stepCountIs, tool } from "ai";
 import { z } from "zod";
+import {
+  enforceDailyTokenBudget,
+  recordApiUsage,
+} from "../../../lib/apiUsage.server";
+import { requireAuthenticatedUser } from "../../../lib/supabaseServer.server";
 
 export const runtime = "nodejs";
 
@@ -92,6 +97,11 @@ async function readWebPage(url: string) {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireAuthenticatedUser(request).catch(() => null);
+  if (!auth) return Response.json({ error: "Wymagane jest zalogowanie." }, { status: 401 });
+  const budgetResponse = await enforceDailyTokenBudget(auth.supabase);
+  if (budgetResponse) return budgetResponse;
+
   if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
     return Response.json(
       {
@@ -142,6 +152,14 @@ Uwzględnij maksymalnie ${days} ${
       maxRetries: 1,
       stopWhen: stepCountIs(maxSteps),
       temperature: 0.25,
+    });
+
+    await recordApiUsage({
+      supabase: auth.supabase,
+      userId: auth.user.id,
+      usage: result.usage,
+      model: "gemini-3.1-flash-lite",
+      endpoint: "/api/city-break",
     });
 
     return Response.json({
