@@ -1,0 +1,8 @@
+{
+  "name": "lekcja-10-security-guards",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}
