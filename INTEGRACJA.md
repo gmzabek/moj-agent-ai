@@ -1,10 +1,10 @@
 # Integracja zabezpieczeń
 
-Plik `security.js` udostępnia gotowy przepływ `runProtectedChat`. Wywołaj go
+Plik `security.mjs` udostępnia gotowy przepływ `runProtectedChat`. Wywołaj go
 wewnątrz serwerowego endpointu zamiast bezpośrednio wywoływać model:
 
 ```js
-import { runProtectedChat } from "./security.js";
+import { runProtectedChat } from "./security.mjs";
 
 const result = await runProtectedChat({
   // Identyfikator musi pochodzić z uwierzytelnionej sesji po stronie serwera.

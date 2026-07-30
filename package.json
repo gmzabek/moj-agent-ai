@@ -1,8 +1,40 @@
 {
-  "name": "lekcja-10-security-guards",
+  "name": "moj-agent-ai",
+  "version": "0.1.0",
   "private": true,
-  "type": "module",
   "scripts": {
-    "test": "node --test"
+    "dev": "next dev",
+    "build": "next build",
+    "check:supabase": "node scripts/check-supabase-w1.mjs",
+    "lint": "eslint .",
+    "test": "node --test security.test.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/google": "latest",
+    "@ai-sdk/react": "latest",
+    "@google/genai": "^2.10.0",
+    "@supabase/supabase-js": "^2.110.5",
+    "ai": "latest",
+    "next": "16.2.12",
+    "pdf-parse": "^1.1.1",
+    "playwright": "^1.62.0",
+    "react": "latest",
+    "react-dom": "latest",
+    "xlsx": "^0.18.5",
+    "zod": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/pdf-parse": "^1.1.4",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "eslint": "latest",
+    "eslint-config-next": "latest",
+    "typescript": "latest"
+  },
+  "overrides": {
+    "postcss": "8.5.24",
+    "sharp": "0.35.3"
   }
 }

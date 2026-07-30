@@ -1,0 +1,928 @@
+const DEFAULT_TIMEOUT_MS = 10_000;
+const DEFAULT_NEWS_RSS_URL =
+  "https://news.google.com/rss?hl=pl&gl=PL&ceid=PL:pl";
+const DEFAULT_PB_EDITION_URL = "https://www.pb.pl/wydanie";
+const DEFAULT_UNUSUAL_HOLIDAYS_BASE_URL =
+  "https://www.kalbi.pl/kalendarz-swiat-nietypowych";
+
+export type Weather = {
+  city: string;
+  country: string;
+  temperature: number;
+  temperatureUnit: string;
+  windSpeed: number;
+  windSpeedUnit: string;
+  precipitation: number;
+  precipitationUnit: string;
+  description: string;
+  source: "Open-Meteo API";
+};
+
+export type ExchangeRate = {
+  currency: string;
+  name: string;
+  rateToPln: number;
+  effectiveDate: string;
+  source: "Narodowy Bank Polski API";
+};
+
+export type CurrentDateTime = {
+  iso: string;
+  date: string;
+  local: string;
+  dayOfWeek: string;
+  timezone: "Europe/Warsaw";
+};
+
+export type DayContext = {
+  isWeekend: boolean;
+  isPublicHoliday: boolean;
+  holidayName: string | null;
+  note: string;
+};
+
+export type NewsHeadline = {
+  title: string;
+  link: string;
+  publishedAt: string | null;
+};
+
+export type MarketQuote = {
+  symbol: string;
+  name: string;
+  market: "Nasdaq" | "NYSE" | "GPW";
+  currency: string;
+  price: number;
+  previousClose: number | null;
+  changePercent: number | null;
+  asOf: string;
+  source: "Yahoo Finance";
+};
+
+export type MarketOverview = {
+  quotes: MarketQuote[];
+  unavailableSymbols: string[];
+  note: string;
+};
+
+export type PbEditionArticle = {
+  title: string;
+  lead: string;
+  page: string | null;
+  link: string;
+};
+
+export type PbEdition = {
+  title: string;
+  url: string;
+  articles: PbEditionArticle[];
+  source: "Puls Biznesu";
+};
+
+export type UnusualHolidayContext = {
+  date: string;
+  holidays: string[];
+  url: string;
+  source: "Kalbi.pl";
+};
+
+export type BibleQuote = {
+  text: string;
+  reference: string;
+  translation: "NRSVue Catholic Edition";
+};
+
+export type ManagerialAccountingTopic = {
+  name: string;
+  formula: string;
+  inputs: string;
+  purpose: string;
+  importance: string;
+  interpretation: string;
+};
+
+export type AgentBuilderLesson = {
+  title: string;
+  skill: string;
+  practice: string;
+  pitfall: string;
+  inspiration: {
+    project: string;
+    built: string;
+    benefit: string;
+    url: string;
+  };
+};
+
+async function fetchWithTimeout(
+  input: string,
+  init: RequestInit = {},
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(input, {
+      ...init,
+      cache: "no-store",
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "morning-briefing/1.0",
+        ...init.headers,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Źródło ${new URL(input).hostname} zwróciło HTTP ${response.status}.`,
+      );
+    }
+
+    return response;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function fetchJson<T>(url: string): Promise<T> {
+  const response = await fetchWithTimeout(url, {
+    headers: { Accept: "application/json" },
+  });
+  return (await response.json()) as T;
+}
+
+function weatherDescription(code: number) {
+  const descriptions: Record<number, string> = {
+    0: "bezchmurnie",
+    1: "przeważnie bezchmurnie",
+    2: "częściowe zachmurzenie",
+    3: "pochmurno",
+    45: "mgła",
+    48: "mgła osadzająca szadź",
+    51: "lekka mżawka",
+    53: "mżawka",
+    55: "intensywna mżawka",
+    61: "lekki deszcz",
+    63: "deszcz",
+    65: "intensywny deszcz",
+    71: "lekki śnieg",
+    73: "śnieg",
+    75: "intensywny śnieg",
+    80: "przelotny deszcz",
+    81: "przelotny deszcz",
+    82: "gwałtowne przelotne opady",
+    95: "burza",
+    96: "burza z gradem",
+    99: "silna burza z gradem",
+  };
+
+  return descriptions[code] ?? `kod pogodowy ${code}`;
+}
+
+export async function getWeather(city: string): Promise<Weather> {
+  type GeoResponse = {
+    results?: Array<{
+      name: string;
+      country: string;
+      latitude: number;
+      longitude: number;
+    }>;
+  };
+  type WeatherResponse = {
+    current: {
+      temperature_2m: number;
+      wind_speed_10m: number;
+      precipitation: number;
+      weather_code: number;
+    };
+    current_units: Record<string, string>;
+  };
+
+  const geo = await fetchJson<GeoResponse>(
+    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(
+      city,
+    )}&count=1&language=pl&format=json`,
+  );
+  const location = geo.results?.[0];
+
+  if (!location) {
+    throw new Error(`Nie znaleziono miasta „${city}”.`);
+  }
+
+  const weather = await fetchJson<WeatherResponse>(
+    `https://api.open-meteo.com/v1/forecast?latitude=${location.latitude}` +
+      `&longitude=${location.longitude}` +
+      "&current=temperature_2m,precipitation,weather_code,wind_speed_10m" +
+      "&timezone=Europe%2FWarsaw",
+  );
+
+  return {
+    city: location.name,
+    country: location.country,
+    temperature: weather.current.temperature_2m,
+    temperatureUnit: weather.current_units.temperature_2m,
+    windSpeed: weather.current.wind_speed_10m,
+    windSpeedUnit: weather.current_units.wind_speed_10m,
+    precipitation: weather.current.precipitation,
+    precipitationUnit: weather.current_units.precipitation,
+    description: weatherDescription(weather.current.weather_code),
+    source: "Open-Meteo API",
+  };
+}
+
+export async function getExchangeRate(currency: string): Promise<ExchangeRate> {
+  type NbpResponse = {
+    code: string;
+    currency: string;
+    rates: Array<{ effectiveDate: string; mid: number }>;
+  };
+
+  const code = currency.trim().toUpperCase();
+  const data = await fetchJson<NbpResponse>(
+    `https://api.nbp.pl/api/exchangerates/rates/A/${encodeURIComponent(
+      code,
+    )}/?format=json`,
+  );
+  const latestRate = data.rates[0];
+
+  if (!latestRate || !Number.isFinite(latestRate.mid)) {
+    throw new Error(`NBP nie zwrócił kursu waluty ${code}.`);
+  }
+
+  return {
+    currency: data.code,
+    name: data.currency,
+    rateToPln: latestRate.mid,
+    effectiveDate: latestRate.effectiveDate,
+    source: "Narodowy Bank Polski API",
+  };
+}
+
+function datePart(
+  parts: Intl.DateTimeFormatPart[],
+  type: Intl.DateTimeFormatPartTypes,
+) {
+  const value = parts.find((part) => part.type === type)?.value;
+  if (!value) {
+    throw new Error(`Nie udało się odczytać części daty: ${type}.`);
+  }
+  return value;
+}
+
+export function currentDateTime(now = new Date()): CurrentDateTime {
+  const timezone = "Europe/Warsaw" as const;
+  const numericParts = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: timezone,
+  }).formatToParts(now);
+  const date = `${datePart(numericParts, "year")}-${datePart(
+    numericParts,
+    "month",
+  )}-${datePart(numericParts, "day")}`;
+  const dayOfWeek = new Intl.DateTimeFormat("pl-PL", {
+    weekday: "long",
+    timeZone: timezone,
+  }).format(now);
+
+  return {
+    iso: now.toISOString(),
+    date,
+    local: new Intl.DateTimeFormat("pl-PL", {
+      dateStyle: "full",
+      timeStyle: "medium",
+      timeZone: timezone,
+    }).format(now),
+    dayOfWeek,
+    timezone,
+  };
+}
+
+export async function getPolishDayContext(
+  dateTime: CurrentDateTime,
+): Promise<DayContext> {
+  type Holiday = { date: string; localName: string };
+  const year = dateTime.date.slice(0, 4);
+  const weekendDays = new Set(["sobota", "niedziela"]);
+  const isWeekend = weekendDays.has(dateTime.dayOfWeek.toLowerCase());
+  let holiday: Holiday | undefined;
+
+  try {
+    const holidays = await fetchJson<Holiday[]>(
+      `https://date.nager.at/api/v3/PublicHolidays/${year}/PL`,
+    );
+    holiday = holidays.find((item) => item.date === dateTime.date);
+  } catch {
+    // Brak odpowiedzi kalendarza nie powinien blokować całego briefingu.
+  }
+
+  const isPublicHoliday = Boolean(holiday);
+  const note = isPublicHoliday
+    ? `Święto ustawowo wolne od pracy: ${holiday?.localName}.`
+    : isWeekend
+      ? "Weekend — dla większości osób jest to dzień wolny od pracy."
+      : "Zwykły dzień roboczy; brak święta ustawowo wolnego od pracy.";
+
+  return {
+    isWeekend,
+    isPublicHoliday,
+    holidayName: holiday?.localName ?? null,
+    note,
+  };
+}
+
+function decodeXml(value: string) {
+  const entities: Record<string, string> = {
+    "&amp;": "&",
+    "&lt;": "<",
+    "&gt;": ">",
+    "&quot;": '"',
+    "&#39;": "'",
+    "&apos;": "'",
+    "&nbsp;": " ",
+    "&ndash;": "–",
+    "&mdash;": "—",
+    "&bdquo;": "„",
+    "&rdquo;": "”",
+  };
+
+  return value
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+    .replace(/&#(\d+);/g, (_, code: string) =>
+      String.fromCodePoint(Number.parseInt(code, 10)),
+    )
+    .replace(/&#x([0-9a-f]+);/gi, (_, code: string) =>
+      String.fromCodePoint(Number.parseInt(code, 16)),
+    )
+    .replace(
+      /&(amp|lt|gt|quot|apos|#39|nbsp|ndash|mdash|bdquo|rdquo);/g,
+      (entity) => entities[entity] ?? entity,
+    )
+    .trim();
+}
+
+function htmlText(value: string) {
+  return decodeXml(
+    value
+      .replace(/<script\b[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style\b[\s\S]*?<\/style>/gi, " ")
+      .replace(/<[^>]+>/g, " "),
+  ).replace(/\s+/g, " ");
+}
+
+function readXmlTag(item: string, tag: string) {
+  const escapedTag = tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return item.match(new RegExp(`<${escapedTag}[^>]*>([\\s\\S]*?)<\\/${escapedTag}>`, "i"))?.[1];
+}
+
+export function parseRssHeadlines(xml: string, limit = 5): NewsHeadline[] {
+  const items = xml.match(/<item\b[\s\S]*?<\/item>/gi) ?? [];
+
+  return items
+    .map((item) => {
+      const title = readXmlTag(item, "title");
+      const link = readXmlTag(item, "link");
+      const publishedAt = readXmlTag(item, "pubDate");
+
+      if (!title || !link) {
+        return null;
+      }
+
+      return {
+        title: decodeXml(title),
+        link: decodeXml(link),
+        publishedAt: publishedAt ? decodeXml(publishedAt) : null,
+      };
+    })
+    .filter((item): item is NewsHeadline => item !== null)
+    .slice(0, limit);
+}
+
+export async function getTopNews(limit = 5): Promise<NewsHeadline[]> {
+  const rssUrl = process.env.NEWS_RSS_URL || DEFAULT_NEWS_RSS_URL;
+  const response = await fetchWithTimeout(rssUrl, {
+    headers: { Accept: "application/rss+xml, application/xml, text/xml" },
+  });
+  const headlines = parseRssHeadlines(await response.text(), limit);
+
+  if (headlines.length === 0) {
+    throw new Error("Kanał RSS nie zwrócił żadnych wiadomości.");
+  }
+
+  return headlines;
+}
+
+type MarketInstrument = {
+  symbol: string;
+  name: string;
+  market: MarketQuote["market"];
+};
+
+const MARKET_INSTRUMENTS: MarketInstrument[] = [
+  { symbol: "MSFT", name: "Microsoft", market: "Nasdaq" },
+  { symbol: "NVDA", name: "Nvidia", market: "Nasdaq" },
+  { symbol: "NVO", name: "Novo Nordisk ADR", market: "NYSE" },
+  { symbol: "AMZN", name: "Amazon", market: "Nasdaq" },
+  { symbol: "WIG20.WA", name: "WIG20", market: "GPW" },
+  { symbol: "PKO.WA", name: "PKO BP", market: "GPW" },
+  { symbol: "PKN.WA", name: "Orlen", market: "GPW" },
+  { symbol: "PZU.WA", name: "PZU", market: "GPW" },
+  { symbol: "KGH.WA", name: "KGHM", market: "GPW" },
+  { symbol: "CDR.WA", name: "CD Projekt", market: "GPW" },
+];
+
+async function getMarketQuote(
+  instrument: MarketInstrument,
+): Promise<MarketQuote> {
+  type YahooChartResponse = {
+    chart: {
+      error: { description?: string } | null;
+      result:
+        | Array<{
+            meta: {
+              chartPreviousClose?: number;
+              currency?: string;
+              regularMarketPrice?: number;
+              regularMarketTime?: number;
+            };
+            indicators?: {
+              quote?: Array<{ close?: Array<number | null> }>;
+            };
+          }>
+        | null;
+    };
+  };
+
+  const data = await fetchJson<YahooChartResponse>(
+    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+      instrument.symbol,
+    )}?range=5d&interval=1d`,
+  );
+  const result = data.chart.result?.[0];
+  const price = result?.meta.regularMarketPrice;
+
+  if (!result || !Number.isFinite(price)) {
+    throw new Error(
+      data.chart.error?.description ??
+        `Brak aktualnego notowania ${instrument.symbol}.`,
+    );
+  }
+
+  const closes =
+    result.indicators?.quote?.[0]?.close?.filter(
+      (value): value is number => typeof value === "number",
+    ) ?? [];
+  const previousClose =
+    result.meta.chartPreviousClose ??
+    (closes.length > 1 ? closes[closes.length - 2] : null);
+  const changePercent =
+    previousClose && Number.isFinite(previousClose)
+      ? ((price! - previousClose) / previousClose) * 100
+      : null;
+
+  return {
+    symbol: instrument.symbol.replace(".WA", ""),
+    name: instrument.name,
+    market: instrument.market,
+    currency: result.meta.currency ?? (instrument.market === "GPW" ? "PLN" : "USD"),
+    price: price!,
+    previousClose,
+    changePercent,
+    asOf: result.meta.regularMarketTime
+      ? new Date(result.meta.regularMarketTime * 1000).toISOString()
+      : new Date().toISOString(),
+    source: "Yahoo Finance",
+  };
+}
+
+export async function getMarketOverview(): Promise<MarketOverview> {
+  const results = await Promise.allSettled(
+    MARKET_INSTRUMENTS.map((instrument) => getMarketQuote(instrument)),
+  );
+  const quotes = results
+    .filter(
+      (result): result is PromiseFulfilledResult<MarketQuote> =>
+        result.status === "fulfilled",
+    )
+    .map((result) => result.value);
+  const unavailableSymbols = results
+    .map((result, index) =>
+      result.status === "rejected" ? MARKET_INSTRUMENTS[index].symbol : null,
+    )
+    .filter((symbol): symbol is string => symbol !== null);
+
+  if (quotes.length === 0) {
+    throw new Error("Źródło notowań nie zwróciło żadnych danych.");
+  }
+
+  return {
+    quotes,
+    unavailableSymbols,
+    note:
+      "Notowania informacyjne, mogą być opóźnione. MSFT, NVDA i AMZN są notowane na Nasdaq; NVO na NYSE.",
+  };
+}
+
+export function parsePbEdition(html: string, limit = 7): PbEdition {
+  const heading =
+    html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ??
+    "Aktualne wydanie Pulsu Biznesu";
+  const itemMatches =
+    html.match(
+      /<li[^>]*class="[^"]*m-listing-article-list__item[^"]*"[^>]*>[\s\S]*?<\/li>/gi,
+    ) ?? [];
+  const articles = itemMatches
+    .map((item): PbEditionArticle | null => {
+      const link = item.match(
+        /<a[^>]*class="[^"]*m-listing-article-list__anchor[^"]*"[^>]*href="([^"]+)"/i,
+      )?.[1];
+      const title = item.match(
+        /<div[^>]*class="[^"]*m-listing-article-list__title[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+      )?.[1];
+      const lead = item.match(
+        /<div[^>]*class="[^"]*m-listing-article-list__lead[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+      )?.[1];
+      const page = item.match(
+        /<div[^>]*class="[^"]*m-listing-article-list__page-number[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+      )?.[1];
+
+      if (!link || !title) {
+        return null;
+      }
+
+      return {
+        title: htmlText(title),
+        lead: lead ? htmlText(lead).slice(0, 420) : "",
+        page: page ? htmlText(page) : null,
+        link: decodeXml(link),
+      };
+    })
+    .filter((article): article is PbEditionArticle => article !== null)
+    .slice(0, limit);
+
+  if (articles.length === 0) {
+    throw new Error("Nie udało się odczytać listy artykułów z wydania PB.");
+  }
+
+  return {
+    title: htmlText(heading),
+    url: DEFAULT_PB_EDITION_URL,
+    articles,
+    source: "Puls Biznesu",
+  };
+}
+
+export async function getPulsBiznesuEdition(limit = 7): Promise<PbEdition> {
+  const url = process.env.PB_EDITION_URL || DEFAULT_PB_EDITION_URL;
+  const response = await fetchWithTimeout(url, {
+    headers: { Accept: "text/html,application/xhtml+xml" },
+  });
+  const edition = parsePbEdition(await response.text(), limit);
+
+  return { ...edition, url };
+}
+
+const POLISH_MONTH_SLUGS = [
+  "styczen",
+  "luty",
+  "marzec",
+  "kwiecien",
+  "maj",
+  "czerwiec",
+  "lipiec",
+  "sierpien",
+  "wrzesien",
+  "pazdziernik",
+  "listopad",
+  "grudzien",
+];
+
+export function parseUnusualHolidays(html: string, day: number) {
+  const article = html.match(
+    new RegExp(
+      `<article[^>]*class="[^"]*unusual-day[^"]*"[^>]*id="${day}"[^>]*>([\\s\\S]*?)<\\/article>`,
+      "i",
+    ),
+  )?.[1];
+
+  if (!article) {
+    return [];
+  }
+
+  return Array.from(
+    article.matchAll(/<h3[^>]*>[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>[\s\S]*?<\/h3>/gi),
+    (match) => htmlText(match[1]),
+  ).filter(Boolean);
+}
+
+export async function getUnusualHolidayContext(
+  dateTime: CurrentDateTime,
+): Promise<UnusualHolidayContext> {
+  const [year, month, day] = dateTime.date.split("-").map(Number);
+  const monthSlug = POLISH_MONTH_SLUGS[month - 1];
+
+  if (!monthSlug || !day) {
+    throw new Error("Nieprawidłowa data dla kalendarza świąt nietypowych.");
+  }
+
+  const baseUrl =
+    process.env.UNUSUAL_HOLIDAYS_BASE_URL ||
+    DEFAULT_UNUSUAL_HOLIDAYS_BASE_URL;
+  const url = `${baseUrl}-${monthSlug}-${year}`;
+  const response = await fetchWithTimeout(url, {
+    headers: { Accept: "text/html,application/xhtml+xml" },
+  });
+
+  return {
+    date: dateTime.date,
+    holidays: parseUnusualHolidays(await response.text(), day),
+    url,
+    source: "Kalbi.pl",
+  };
+}
+
+const BIBLE_QUOTES: BibleQuote[] = [
+  {
+    text: "I can do all things through him who strengthens me.",
+    reference: "Philippians 4:13",
+    translation: "NRSVue Catholic Edition",
+  },
+  {
+    text: "Blessed are the peacemakers, for they will be called children of God.",
+    reference: "Matthew 5:9",
+    translation: "NRSVue Catholic Edition",
+  },
+  {
+    text: "Rejoice in the Lord always; again I will say, Rejoice.",
+    reference: "Philippians 4:4",
+    translation: "NRSVue Catholic Edition",
+  },
+  {
+    text: "And now faith, hope, and love remain, these three, and the greatest of these is love.",
+    reference: "1 Corinthians 13:13",
+    translation: "NRSVue Catholic Edition",
+  },
+  {
+    text: "Be kind to one another, tenderhearted, forgiving one another, as God in Christ has forgiven you.",
+    reference: "Ephesians 4:32",
+    translation: "NRSVue Catholic Edition",
+  },
+  {
+    text: "Rejoice in hope; be patient in affliction; persevere in prayer.",
+    reference: "Romans 12:12",
+    translation: "NRSVue Catholic Edition",
+  },
+  {
+    text: "Let all that you do be done in love.",
+    reference: "1 Corinthians 16:14",
+    translation: "NRSVue Catholic Edition",
+  },
+];
+
+export function getBibleQuote(date: string): BibleQuote {
+  const seed = Array.from(date).reduce(
+    (total, character) => total + character.charCodeAt(0),
+    0,
+  );
+
+  return BIBLE_QUOTES[seed % BIBLE_QUOTES.length];
+}
+
+const MANAGERIAL_ACCOUNTING_TOPICS: ManagerialAccountingTopic[] = [
+  {
+    name: "Contribution margin ratio (wskaźnik marży pokrycia)",
+    formula:
+      "(przychody ze sprzedaży − koszty zmienne) ÷ przychody ze sprzedaży × 100%",
+    inputs:
+      "Przychody pochodzą z raportu sprzedaży, a koszty zmienne z ewidencji kosztów zależnych od wolumenu.",
+    purpose:
+      "Pokazuje, jaka część każdej złotówki sprzedaży pozostaje na pokrycie kosztów stałych i zysku.",
+    importance:
+      "Pomaga oceniać rentowność produktów, decyzje cenowe i wpływ zmiany struktury sprzedaży.",
+    interpretation:
+      "Wyższy wynik zwykle oznacza większy wkład sprzedaży w wynik; spadek może wskazywać na wzrost kosztów zmiennych albo presję cenową.",
+  },
+  {
+    name: "Break-even point (próg rentowności)",
+    formula:
+      "koszty stałe ÷ (cena jednostkowa − jednostkowy koszt zmienny)",
+    inputs:
+      "Koszty stałe pochodzą z budżetu kosztów, a cena i koszt zmienny na jednostkę z danych sprzedażowych i kalkulacji produktu.",
+    purpose:
+      "Wyznacza liczbę jednostek, przy której przychody dokładnie pokrywają wszystkie koszty.",
+    importance:
+      "Ułatwia planowanie wolumenu, cen i ocenę ryzyka nowego produktu lub inwestycji.",
+    interpretation:
+      "Sprzedaż powyżej progu tworzy zysk operacyjny, a poniżej progu powoduje stratę; niższy próg oznacza zwykle mniejsze ryzyko.",
+  },
+  {
+    name: "Margin of safety (margines bezpieczeństwa)",
+    formula:
+      "(sprzedaż rzeczywista lub planowana − sprzedaż na progu rentowności) ÷ sprzedaż rzeczywista lub planowana × 100%",
+    inputs:
+      "Sprzedaż pochodzi z raportu wykonania lub budżetu, a sprzedaż progowa z analizy progu rentowności.",
+    purpose:
+      "Pokazuje, o ile sprzedaż może spaść, zanim działalność zacznie przynosić stratę.",
+    importance:
+      "Jest prostą miarą odporności wyniku na spadek popytu.",
+    interpretation:
+      "Wyższy procent oznacza większy bufor bezpieczeństwa; niski wynik sygnalizuje wysoką wrażliwość na nawet niewielki spadek sprzedaży.",
+  },
+  {
+    name: "Degree of operating leverage (dźwignia operacyjna)",
+    formula: "marża pokrycia ÷ zysk operacyjny",
+    inputs:
+      "Marża pokrycia wynika ze sprzedaży pomniejszonej o koszty zmienne, a zysk operacyjny z rachunku wyników zarządczych.",
+    purpose:
+      "Szacuje wrażliwość zysku operacyjnego na procentową zmianę sprzedaży przy danym poziomie działalności.",
+    importance:
+      "Pokazuje ryzyko związane z wysokim udziałem kosztów stałych.",
+    interpretation:
+      "Dźwignia równa 3 oznacza, że zmiana sprzedaży o 1% może zmienić zysk operacyjny o około 3%; wysoki wynik zwiększa potencjał zysku i ryzyko straty.",
+  },
+  {
+    name: "ROI centrum inwestycyjnego",
+    formula:
+      "zysk operacyjny ÷ średnie aktywa operacyjne × 100%",
+    inputs:
+      "Zysk operacyjny pochodzi z raportu segmentu, a średnie aktywa z bilansu zarządczego na początek i koniec okresu.",
+    purpose:
+      "Mierzy efektywność wykorzystania aktywów powierzonych menedżerowi.",
+    importance:
+      "Pozwala porównywać jednostki o różnej skali i łączy rentowność sprzedaży z obrotem aktywów.",
+    interpretation:
+      "Wyższy ROI oznacza większy zysk z każdej złotówki aktywów, ale należy porównać go z kosztem kapitału i uważać, by nie zniechęcał do opłacalnych inwestycji.",
+  },
+  {
+    name: "Residual income (dochód rezydualny)",
+    formula:
+      "zysk operacyjny − (wymagana stopa zwrotu × średnie aktywa operacyjne)",
+    inputs:
+      "Zysk i aktywa pochodzą z raportów segmentu, a wymagana stopa zwrotu z polityki finansowej firmy.",
+    purpose:
+      "Pokazuje kwotę zysku wypracowaną ponad minimalny koszt kapitału zaangażowanego w jednostkę.",
+    importance:
+      "Pomaga oceniać, czy decyzje menedżera rzeczywiście tworzą wartość, także gdy obniżają procentowy ROI.",
+    interpretation:
+      "Wynik dodatni oznacza zwrot powyżej wymaganego minimum; wynik ujemny wskazuje, że jednostka nie pokrywa kosztu zaangażowanego kapitału.",
+  },
+  {
+    name: "Odchylenie ceny materiałów",
+    formula:
+      "(rzeczywista cena − cena standardowa) × rzeczywista ilość zakupionych materiałów",
+    inputs:
+      "Cena i ilość rzeczywista pochodzą z faktur oraz ewidencji zakupów, a cena standardowa z budżetu lub karty kosztu standardowego.",
+    purpose:
+      "Oddziela wpływ ceny zakupu od wpływu zużycia materiałów na koszt produkcji.",
+    importance:
+      "Pomaga szybko wykryć zmianę cen dostawców, słabsze negocjacje albo zmianę jakości kupowanych materiałów.",
+    interpretation:
+      "Wynik dodatni jest zwykle odchyleniem niekorzystnym, a ujemny korzystnym; zawsze trzeba sprawdzić, czy niższa cena nie pogorszyła jakości lub zużycia.",
+  },
+];
+
+export function getManagerialAccountingTopic(
+  date: string,
+): ManagerialAccountingTopic {
+  const seed = Array.from(date).reduce(
+    (total, character) => total + character.charCodeAt(0),
+    0,
+  );
+
+  return MANAGERIAL_ACCOUNTING_TOPICS[
+    seed % MANAGERIAL_ACCOUNTING_TOPICS.length
+  ];
+}
+
+const AGENT_BUILDER_LESSONS: AgentBuilderLesson[] = [
+  {
+    title: "Projektuj narzędzia agenta z jednoznacznym kontraktem",
+    skill:
+      "Każde narzędzie powinno mieć jedną odpowiedzialność, jasny opis oraz ścisły schemat wejścia i wyjścia. Dzięki temu model łatwiej wybiera właściwą funkcję i przekazuje poprawne argumenty.",
+    practice:
+      "Zaprojektuj narzędzie get_customer z jednym wymaganym customerId i wynikiem zawierającym tylko id, name oraz status.",
+    pitfall:
+      "Nie łącz odczytu, edycji i usuwania danych w jednym narzędziu — utrudnia to kontrolę błędów i uprawnień.",
+    inspiration: {
+      project: "OpenHands",
+      built:
+        "Społeczność stworzyła agentów programistycznych pracujących z kodem, terminalem i repozytoriami.",
+      benefit:
+        "Automatyzują powtarzalne prace inżynierskie i pozwalają zlecić agentowi całe, sprawdzalne zadanie zamiast pojedynczej podpowiedzi.",
+      url: "https://github.com/OpenHands/OpenHands",
+    },
+  },
+  {
+    title: "Stosuj zasadę najmniejszych uprawnień",
+    skill:
+      "Agent powinien otrzymywać tylko te narzędzia, katalogi, domeny i operacje, których potrzebuje do bieżącego zadania. Operacje zapisujące lub usuwające dane warto oddzielać od odczytu.",
+    practice:
+      "Spisz allowlistę domen i operacji dla jednego agenta, a wszystko poza listą domyślnie zablokuj.",
+    pitfall:
+      "Nie przekazuj agentowi klucza administracyjnego, jeśli wystarcza klucz ograniczony przez role albo polityki dostępu.",
+    inspiration: {
+      project: "browser-use",
+      built:
+        "Twórcy udostępnili bibliotekę, dzięki której agent może wykonywać zadania w przeglądarce i poruszać się po stronach.",
+      benefit:
+        "Pozwala automatyzować ręczne klikanie i przepisywanie danych, zachowując możliwość ograniczenia miejsc, które agent może odwiedzać.",
+      url: "https://github.com/browser-use/browser-use",
+    },
+  },
+  {
+    title: "Izoluj projekt Pythona w środowisku wirtualnym",
+    skill:
+      "Środowisko venv oddziela biblioteki projektu od globalnego Pythona. Plik requirements.txt utrwala wersje potrzebne do odtworzenia aplikacji na innym komputerze.",
+    practice:
+      "Utwórz środowisko poleceniem python -m venv .venv, aktywuj je i zapisz zależności przez python -m pip freeze.",
+    pitfall:
+      "Nie dodawaj katalogu .venv ani plików z sekretami do repozytorium; umieść je w .gitignore.",
+    inspiration: {
+      project: "Home Assistant",
+      built:
+        "Społeczność zbudowała w Pythonie otwartą platformę, która łączy urządzenia i automatyzacje inteligentnego domu.",
+      benefit:
+        "Jedno lokalne centrum sterowania zastępuje wiele aplikacji i automatyzuje codzienne czynności przy większej kontroli nad prywatnością.",
+      url: "https://www.home-assistant.io/",
+    },
+  },
+  {
+    title: "Zamień powtarzalne polecenia VS Code w zadania",
+    skill:
+      "Plik .vscode/tasks.json może uruchamiać testy, lint lub build pod stałą nazwą. Człowiek i agent korzystają wtedy z tego samego, powtarzalnego sposobu weryfikacji.",
+    practice:
+      "Dodaj zadanie verify, które uruchamia npm run typecheck oraz npm run lint, i ustaw je jako domyślne zadanie testowe.",
+    pitfall:
+      "Nie zapisuj w konfiguracji ścieżek zależnych od jednego komputera ani wartości zmiennych środowiskowych.",
+    inspiration: {
+      project: "Dify",
+      built:
+        "Twórcy stworzyli wizualne środowisko łączące przepływy AI, RAG, narzędzia, modele i obserwowalność aplikacji.",
+      benefit:
+        "Zespół może szybciej przejść od prototypu do działającego agenta i wspólnie analizować jego przepływ bez czytania całego kodu.",
+      url: "https://github.com/langgenius/dify",
+    },
+  },
+  {
+    title: "Rozdziel klucze Supabase i włącz RLS",
+    skill:
+      "Klucz publiczny może działać w przeglądarce tylko razem z poprawnymi politykami Row Level Security. Klucz service role omija RLS, dlatego powinien być używany wyłącznie po stronie serwera.",
+    practice:
+      "Dla jednej tabeli napisz politykę SELECT pozwalającą użytkownikowi odczytać tylko rekordy, których user_id odpowiada auth.uid().",
+    pitfall:
+      "Nigdy nie używaj SUPABASE_SERVICE_ROLE_KEY w komponencie klienckim ani w zmiennej zaczynającej się od NEXT_PUBLIC_.",
+    inspiration: {
+      project: "Open WebUI",
+      built:
+        "Społeczność stworzyła samodzielnie hostowany interfejs do modeli, wiedzy, narzędzi i agentów.",
+      benefit:
+        "Użytkownicy zyskują jedno miejsce do pracy z różnymi modelami oraz większą kontrolę nad konfiguracją i danymi.",
+      url: "https://docs.openwebui.com/",
+    },
+  },
+  {
+    title: "Traktuj wdrożenie Vercel jako osobne środowisko",
+    skill:
+      "Kod z GitHub trafia do nowego deploymentu, ale zmienne środowiskowe i zapisane dane nie aktualizują się razem z nim. Production, Preview i lokalny komputer mogą mieć inne ustawienia.",
+    practice:
+      "Po wdrożeniu sprawdź hash commitu, status Ready i wykonaj jedno kontrolowane wywołanie endpointu, zamiast oceniać zmianę na podstawie starego rekordu.",
+    pitfall:
+      "Po zmianie zmiennej środowiskowej wykonaj redeploy; istniejący deployment nie zawsze otrzyma nową wartość automatycznie.",
+    inspiration: {
+      project: "n8n",
+      built:
+        "Twórcy i społeczność zbudowali platformę automatyzacji łączącą wizualne przepływy, kod, integracje i możliwości AI.",
+      benefit:
+        "Powtarzalne przekazywanie danych między usługami może działać według harmonogramu lub zdarzenia bez ręcznej obsługi.",
+      url: "https://github.com/n8n-io/n8n",
+    },
+  },
+  {
+    title: "Kontroluj katalog roboczy w PowerShell",
+    skill:
+      "Polecenia Git, npm i skrypty działają względem bieżącego katalogu. Get-Location pokazuje aktualne miejsce, a Set-Location przenosi terminal do katalogu projektu.",
+    practice:
+      "Przed pracą wykonaj Get-Location, git status oraz git branch --show-current i dopiero potem uruchamiaj commit albo push.",
+    pitfall:
+      "Nie wykonuj poleceń Git z katalogu użytkownika — komunikat not a git repository oznacza zwykle niewłaściwy katalog.",
+    inspiration: {
+      project: "Flowise",
+      built:
+        "Społeczność stworzyła wizualny kreator agentów i przepływów LLM z narzędziami, RAG, ewaluacją oraz human-in-the-loop.",
+      benefit:
+        "Pozwala szybko zobaczyć logikę agenta i testować pomysły, zanim powstanie rozbudowana aplikacja pisana od zera.",
+      url: "https://docs.flowiseai.com/",
+    },
+  },
+];
+
+export function getAgentBuilderLesson(date: string): AgentBuilderLesson {
+  const seed = Array.from(date).reduce(
+    (total, character) => total + character.charCodeAt(0),
+    0,
+  );
+
+  return AGENT_BUILDER_LESSONS[seed % AGENT_BUILDER_LESSONS.length];
+}

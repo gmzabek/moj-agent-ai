@@ -9,7 +9,7 @@ import {
   runProtectedChat,
   sanitizeInput,
   validateInput,
-} from "./security.js";
+} from "./security.mjs";
 
 test("sanitizeInput usuwa znaki kontrolne i zero-width", () => {
   assert.equal(sanitizeInput("A\u200BB\u0000C"), "AB C");
