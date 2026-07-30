@@ -20,6 +20,7 @@ import {
   enforceDailyTokenBudget,
   recordApiUsage,
 } from "../../../lib/apiUsage.server";
+import { recordSecurityMessageSafely } from "../../../lib/securityLogs.server";
 import {
   BLOCKED_INPUT_MESSAGE,
   BLOCKED_OUTPUT_MESSAGE,
@@ -1191,6 +1192,15 @@ async function streamModelToController({
     });
 
     if (filteredOutput === BLOCKED_OUTPUT_MESSAGE) {
+      await recordSecurityMessageSafely({
+        supabase,
+        userId,
+        message: "Odpowiedź modelu zatrzymana przez filtr wyjścia.",
+        blocked: true,
+        blockReason: "output_filter",
+        stage: "output",
+        endpoint: "/api/chat",
+      });
       enqueueTextResponse(
         controller,
         `${BLOCKED_OUTPUT_MESSAGE}${createUsageFooter(chatModelId, usage)}`,
@@ -1290,6 +1300,15 @@ export async function POST(req: Request) {
   const rateLimit = messageRateLimiter.check(user.id);
 
   if (!rateLimit.allowed) {
+    await recordSecurityMessageSafely({
+      supabase,
+      userId: user.id,
+      message: "",
+      blocked: true,
+      blockReason: "50 wiadomości na godzinę",
+      stage: "rate_limit",
+      endpoint: "/api/chat",
+    });
     return Response.json(
       {
         error: rateLimit.message,
@@ -1330,10 +1349,26 @@ export async function POST(req: Request) {
   );
 
   if (!validation.ok) {
+    await recordSecurityMessageSafely({
+      supabase,
+      userId: user.id,
+      message: rawLastUserText,
+      blocked: true,
+      blockReason: validation.reason,
+      stage: "input",
+      endpoint: "/api/chat",
+    });
     return Response.json({ error: validation.message }, { status: 400 });
   }
 
   const lastUserText = validation.value;
+  await recordSecurityMessageSafely({
+    supabase,
+    userId: user.id,
+    message: lastUserText,
+    stage: "input",
+    endpoint: "/api/chat",
+  });
   const safeMessages = replaceLastUserText(messages, lastUserText);
   const modelMessages = addImageToLastUserMessage(
     await convertToModelMessages(safeMessages),

@@ -1,0 +1,509 @@
+.page {
+  min-height: 100vh;
+  padding: clamp(1.25rem, 3vw, 2.75rem);
+  background:
+    radial-gradient(circle at 85% 5%, rgba(70, 210, 156, 0.09), transparent 28rem),
+    radial-gradient(circle at 5% 20%, rgba(91, 144, 255, 0.08), transparent 26rem);
+}
+
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin: 0 auto 1.75rem;
+  max-width: 1400px;
+}
+
+.header h1 {
+  margin: 0.35rem 0 0.45rem;
+  font-size: clamp(1.75rem, 4vw, 2.65rem);
+  letter-spacing: -0.045em;
+}
+
+.header p,
+.loadingCard p,
+.errorCard p,
+.emptyState p,
+.alert p {
+  margin: 0;
+  color: #9da8b9;
+}
+
+.eyebrow,
+.sectionLabel {
+  color: #72e6b0;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  color: #929dae;
+  font-size: 0.76rem;
+}
+
+.headerActions button,
+.errorCard button {
+  border: 1px solid rgba(114, 230, 176, 0.35);
+  border-radius: 8px;
+  padding: 0.68rem 0.9rem;
+  background: rgba(114, 230, 176, 0.09);
+  color: #b8f5d7;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.headerActions button:hover,
+.errorCard button:hover {
+  background: rgba(114, 230, 176, 0.16);
+}
+
+.headerActions button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.statsGrid,
+.mainGrid,
+.panel,
+.inlineError {
+  max-width: 1400px;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin-bottom: 0.85rem;
+}
+
+.statCard,
+.panel,
+.loadingCard,
+.errorCard {
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.035), transparent 55%),
+    rgba(13, 16, 23, 0.94);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
+}
+
+.statCard {
+  position: relative;
+  overflow: hidden;
+  min-height: 146px;
+  border-radius: 12px;
+  padding: 1.15rem;
+}
+
+.statCard::after {
+  position: absolute;
+  inset: auto -1.5rem -2.5rem auto;
+  width: 7rem;
+  height: 7rem;
+  border-radius: 999px;
+  background: rgba(114, 230, 176, 0.05);
+  content: "";
+}
+
+.statCard span {
+  display: block;
+  color: #9da8b9;
+  font-size: 0.78rem;
+}
+
+.statCard strong {
+  display: block;
+  margin: 0.6rem 0 0.5rem;
+  font-size: clamp(1.65rem, 3vw, 2.2rem);
+  letter-spacing: -0.045em;
+}
+
+.statCard small,
+.userDetails small,
+.logsTable small {
+  color: #778294;
+  font-size: 0.72rem;
+}
+
+.dangerStat strong {
+  color: #ff9999;
+}
+
+.dangerStat::after {
+  background: rgba(248, 113, 113, 0.08);
+}
+
+.mainGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 0.85rem;
+  margin-bottom: 0.85rem;
+}
+
+.panel {
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 76px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 1rem 1.15rem;
+}
+
+.panelHeader h2 {
+  margin: 0.22rem 0 0;
+  font-size: 1.05rem;
+}
+
+.countBadge,
+.mutedBadge,
+.reasonBadge {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.countBadge {
+  display: grid;
+  min-width: 2rem;
+  height: 2rem;
+  place-items: center;
+  color: #ffc789;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.mutedBadge {
+  padding: 0.35rem 0.6rem;
+  color: #8f99a9;
+  font-size: 0.68rem;
+}
+
+.alertList,
+.userList {
+  max-height: 410px;
+  overflow: auto;
+  padding: 0.5rem;
+}
+
+.alert {
+  display: grid;
+  grid-template-columns: 2.1rem 1fr;
+  gap: 0.75rem;
+  margin: 0.35rem;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 9px;
+  padding: 0.85rem;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.alertCritical {
+  border-left: 3px solid #f87171;
+}
+
+.alertWarning {
+  border-left: 3px solid #f4bd67;
+}
+
+.alertIcon {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border-radius: 7px;
+  background: rgba(248, 113, 113, 0.11);
+  color: #ff9e9e;
+  font-weight: 900;
+}
+
+.alert strong {
+  font-size: 0.86rem;
+}
+
+.alert p {
+  margin-top: 0.2rem;
+  font-size: 0.8rem;
+}
+
+.alert time {
+  display: block;
+  margin-top: 0.45rem;
+  color: #6f7989;
+  font-size: 0.68rem;
+}
+
+.userRow {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.35rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 0.82rem 0.45rem;
+}
+
+.userRow:last-child {
+  border-bottom: 0;
+}
+
+.rank {
+  display: grid;
+  width: 1.85rem;
+  height: 1.85rem;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 7px;
+  color: #9da8b9;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.userDetails {
+  min-width: 0;
+}
+
+.userDetails > strong {
+  display: block;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.progressTrack {
+  height: 5px;
+  overflow: hidden;
+  margin-bottom: 0.4rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.progressTrack span {
+  display: block;
+  min-width: 3px;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.progressNormal {
+  background: #72e6b0;
+}
+
+.progressWarning {
+  background: #f4bd67;
+}
+
+.progressCritical {
+  background: #f87171;
+}
+
+.percentage {
+  min-width: 3rem;
+  color: #cbd4df;
+  font-size: 0.85rem;
+  text-align: right;
+}
+
+.logsPanel {
+  margin-bottom: 1.5rem;
+}
+
+.tableScroll {
+  overflow-x: auto;
+}
+
+.logsTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.logsTable th,
+.logsTable td {
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.065);
+  text-align: left;
+  vertical-align: top;
+}
+
+.logsTable th {
+  color: #7f8999;
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.logsTable td:first-child {
+  max-width: 220px;
+}
+
+.logsTable td:first-child strong,
+.logsTable td:first-child small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.logsTable time {
+  color: #929dae;
+  white-space: nowrap;
+}
+
+.messageCell {
+  max-width: 390px;
+  color: #cbd4df;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.reasonBadge {
+  display: inline-block;
+  padding: 0.3rem 0.5rem;
+  color: #ffb7b7;
+  font-size: 0.68rem;
+  white-space: nowrap;
+}
+
+.emptyState {
+  display: grid;
+  min-height: 220px;
+  place-items: center;
+  align-content: center;
+  gap: 0.4rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+.emptyState > span {
+  display: grid;
+  width: 2.4rem;
+  height: 2.4rem;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(114, 230, 176, 0.09);
+  color: #72e6b0;
+}
+
+.emptyState p {
+  max-width: 330px;
+  font-size: 0.8rem;
+}
+
+.inlineError {
+  margin-bottom: 0.85rem;
+  border: 1px solid rgba(248, 113, 113, 0.24);
+  border-radius: 8px;
+  padding: 0.7rem 0.9rem;
+  background: rgba(248, 113, 113, 0.07);
+  color: #ffb6b6;
+  font-size: 0.8rem;
+}
+
+.loadingCard,
+.errorCard {
+  max-width: 640px;
+  margin: 16vh auto 0;
+  border-radius: 14px;
+  padding: 1.4rem;
+}
+
+.loadingCard {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.loadingCard strong {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #72e6b0;
+  border-radius: 999px;
+  animation: spin 0.8s linear infinite;
+}
+
+.errorCard {
+  text-align: center;
+}
+
+.errorCard > span {
+  font-size: 2rem;
+}
+
+.errorCard h1 {
+  margin: 0.75rem 0 0.45rem;
+  font-size: 1.35rem;
+}
+
+.errorCard button {
+  margin-top: 1rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 1050px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mainGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .page {
+    padding: 1rem;
+  }
+
+  .header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .headerActions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .statCard {
+    min-height: 126px;
+  }
+
+  .panelHeader {
+    align-items: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+}

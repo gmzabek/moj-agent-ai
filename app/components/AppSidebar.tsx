@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "./AuthProvider";
 
 const sidebarItems = [
+  { href: "/admin/security", icon: "🛡️", label: "Bezpieczeństwo" },
   { href: "/agent", icon: "🏠", label: "Dashboard" },
   { href: "/briefings", icon: "📰", label: "Briefingi" },
   { href: "/email-triage", icon: "📧", label: "E-mail Triage" },

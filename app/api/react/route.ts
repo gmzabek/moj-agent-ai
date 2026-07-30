@@ -6,6 +6,7 @@ import {
   enforceDailyTokenBudget,
   recordApiUsage,
 } from "../../../lib/apiUsage.server";
+import { recordSecurityMessageSafely } from "../../../lib/securityLogs.server";
 import { searchKnowledgeBase } from "../../../lib/searchKnowledge.server";
 import { requireAuthenticatedUser } from "../../../lib/supabaseServer.server";
 import {
@@ -665,6 +666,15 @@ export async function POST(request: Request) {
   const { profile: loadedProfile, error: profileError } =
     await getOrCreateUserProfile(supabase, profileId);
   const lastUserMessage = [...messages].reverse().find((message) => message.role === "user")?.content;
+  if (lastUserMessage) {
+    await recordSecurityMessageSafely({
+      supabase,
+      userId: user.id,
+      message: lastUserMessage,
+      stage: "input",
+      endpoint: "/api/react",
+    });
+  }
   const detectedName = lastUserMessage ? extractNameFromMessage(lastUserMessage) : null;
   const detectedWorkDetails = lastUserMessage
     ? extractWorkDetailsFromMessage(lastUserMessage)
