@@ -1,8 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-export const DEFAULT_DAILY_TOKEN_LIMIT = 10_000;
+export const DEFAULT_DAILY_TOKEN_LIMIT = 20_000;
 export const DAILY_TOKEN_LIMIT_MESSAGE =
-  "Dzienny limit tokenów (10k) został wyczerpany. Wróć jutro!";
+  "Dzienny limit tokenów (20k) został wyczerpany. Wróć jutro!";
 
 type UsageValue = number | null | undefined;
 

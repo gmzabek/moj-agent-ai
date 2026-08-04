@@ -1,6 +1,5 @@
 import { createClient, type User } from "@supabase/supabase-js";
-
-const DAILY_TOKEN_LIMIT = 10_000;
+import { getDailyTokenLimit } from "./apiUsage.server";
 
 type UsageRow = {
   user_id: string;
@@ -101,6 +100,7 @@ async function getUserEmailMap(userIds: string[]) {
 
 export async function getSecurityDashboardData() {
   const admin = getSupabaseAdmin();
+  const dailyTokenLimit = getDailyTokenLimit();
   const [
     usageResult,
     statsResult,
@@ -156,7 +156,7 @@ export async function getSecurityDashboardData() {
       tokensWeek: toNumber(row.tokens_week),
       dailyLimitPercent: Math.min(
         100,
-        Math.round((tokensToday / DAILY_TOKEN_LIMIT) * 100),
+        Math.round((tokensToday / dailyTokenLimit) * 100),
       ),
     };
   });
@@ -221,7 +221,7 @@ export async function getSecurityDashboardData() {
     {
       id: "token-budget",
       name: "Dzienny budżet tokenów",
-      detail: "Limit 10 000 tokenów na użytkownika dziennie",
+      detail: `Limit ${dailyTokenLimit.toLocaleString("pl-PL")} tokenów na użytkownika dziennie`,
       status: "active" as const,
     },
     {
@@ -284,6 +284,7 @@ export async function getSecurityDashboardData() {
       tokensWeek: toNumber(stats.tokens_week),
       blockedMessages: toNumber(stats.blocked_messages),
       averageTokensPerUser: toNumber(stats.average_tokens_per_user),
+      dailyTokenLimit,
     },
     topUsers,
     alerts,

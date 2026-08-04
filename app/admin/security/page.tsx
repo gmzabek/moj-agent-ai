@@ -11,6 +11,7 @@ type SecurityDashboardData = {
     tokensWeek: number;
     blockedMessages: number;
     averageTokensPerUser: number;
+    dailyTokenLimit: number;
   };
   topUsers: Array<{
     userId: string;
@@ -299,7 +300,9 @@ export default function SecurityDashboardPage() {
               <span className={styles.sectionLabel}>ZUŻYCIE</span>
               <h2>Top 5 użytkowników</h2>
             </div>
-            <span className={styles.mutedBadge}>limit 10 000 / dzień</span>
+            <span className={styles.mutedBadge}>
+              limit {formatNumber(data.stats.dailyTokenLimit)} / dzień
+            </span>
           </div>
 
           {data.topUsers.length ? (
