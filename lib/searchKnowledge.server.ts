@@ -9,6 +9,7 @@ import {
   toPgVector,
 } from "./embeddings";
 import { explainSupabaseRlsError } from "./supabaseAdmin.server";
+import { validateExternalContent } from "../security.mjs";
 
 type MatchDocumentRow = {
   added_at?: string | null;
@@ -133,23 +134,34 @@ export async function searchKnowledgeBase(
       (row) =>
         typeof row.id === "string" && ownedDocuments.has(row.id),
     )
-    .map((row) => {
+    .flatMap<KnowledgeSearchResult>((row) => {
       const metadata = normalizeMetadata(row.metadata);
+      const contentValidation = validateExternalContent(row.content?.trim() || "");
 
-      return {
+      if (!contentValidation.ok) {
+        return [];
+      }
+
+      const rawTitle = getSourceTitle(row.title, metadata);
+      const titleValidation = validateExternalContent(rawTitle);
+      const safeTitle = titleValidation.ok
+        ? titleValidation.value.slice(0, 200)
+        : "Dokument firmowy";
+
+      return [{
         added_at:
           row.added_at ??
           row.created_at ??
           (row.id ? ownedDocuments.get(row.id) : null) ??
           null,
-        content: row.content?.trim() || "",
-        metadata,
+        content: contentValidation.value,
+        metadata: { source: safeTitle },
         similarity:
           typeof row.similarity === "number"
             ? row.similarity
             : Number(row.similarity ?? 0),
-        title: getSourceTitle(row.title, metadata),
-      };
+        title: safeTitle,
+      }];
     })
     .filter((row) => row.content.length > 0);
   const sourceDocuments = Array.from(new Set(results.map((row) => row.title)));

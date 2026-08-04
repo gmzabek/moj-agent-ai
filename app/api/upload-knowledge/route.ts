@@ -13,6 +13,10 @@ import {
 } from "../../../lib/embeddings";
 import { explainSupabaseRlsError } from "../../../lib/supabaseAdmin.server";
 import { requireAuthenticatedUser } from "../../../lib/supabaseServer.server";
+import {
+  sanitizeHtmlForAgent,
+  validateExternalContent,
+} from "../../../security.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,7 +44,19 @@ function parseUploadBody(body: UploadBody) {
     throw new Error("Treść dokumentu jest wymagana.");
   }
 
-  return { content, title };
+  const titleValidation = validateExternalContent(title);
+  const contentValidation = /<[a-z][^>]*>/iu.test(content)
+    ? sanitizeHtmlForAgent(content)
+    : validateExternalContent(content);
+
+  if (!titleValidation.ok || !contentValidation.ok) {
+    throw new Error("Dokument został odrzucony z powodów bezpieczeństwa.");
+  }
+
+  return {
+    content: contentValidation.value,
+    title: titleValidation.value.slice(0, 200),
+  };
 }
 
 async function saveKnowledge(

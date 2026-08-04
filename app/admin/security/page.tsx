@@ -36,6 +36,20 @@ type SecurityDashboardData = {
     endpoint: string;
     createdAt: string;
   }>;
+  violationCounters: Array<{
+    userId: string;
+    user: string;
+    lastHour: number;
+    last24Hours: number;
+    total: number;
+    lastViolationAt: string;
+  }>;
+  diagnostics: Array<{
+    id: string;
+    name: string;
+    detail: string;
+    status: "active" | "warning";
+  }>;
 };
 
 const numberFormatter = new Intl.NumberFormat("pl-PL");
@@ -206,6 +220,36 @@ export default function SecurityDashboardPage() {
         </article>
       </section>
 
+      <section className={`${styles.panel} ${styles.diagnosticsPanel}`}>
+        <div className={styles.panelHeader}>
+          <div>
+            <span className={styles.sectionLabel}>DIAGNOSTYKA</span>
+            <h2>Stan funkcji bezpieczeństwa</h2>
+          </div>
+          <span className={styles.mutedBadge}>
+            {data.diagnostics.filter((item) => item.status === "active").length}/
+            {data.diagnostics.length} aktywnych
+          </span>
+        </div>
+        <div className={styles.diagnosticsGrid}>
+          {data.diagnostics.map((item) => (
+            <article className={styles.diagnosticCard} key={item.id}>
+              <span
+                className={
+                  item.status === "active"
+                    ? styles.statusActive
+                    : styles.statusWarning
+                }
+              >
+                {item.status === "active" ? "AKTYWNE" : "UWAGA"}
+              </span>
+              <strong>{item.name}</strong>
+              <p>{item.detail}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <div className={styles.mainGrid}>
         <section className={styles.panel}>
           <div className={styles.panelHeader}>
@@ -297,6 +341,68 @@ export default function SecurityDashboardPage() {
           )}
         </section>
       </div>
+
+      <section className={`${styles.panel} ${styles.violationsPanel}`}>
+        <div className={styles.panelHeader}>
+          <div>
+            <span className={styles.sectionLabel}>NARUSZENIA</span>
+            <h2>Licznik naruszeń użytkowników</h2>
+          </div>
+          <span className={styles.mutedBadge}>
+            {data.violationCounters.length} użytkowników
+          </span>
+        </div>
+
+        {data.violationCounters.length ? (
+          <div className={styles.tableScroll}>
+            <table className={styles.logsTable}>
+              <thead>
+                <tr>
+                  <th>Użytkownik</th>
+                  <th>Ostatnia godzina</th>
+                  <th>Ostatnie 24 h</th>
+                  <th>Łącznie</th>
+                  <th>Ostatnie naruszenie</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.violationCounters.map((entry) => (
+                  <tr key={entry.userId}>
+                    <td>
+                      <strong title={entry.user}>{entry.user}</strong>
+                      <small>{entry.userId}</small>
+                    </td>
+                    <td>
+                      <span
+                        className={
+                          entry.lastHour >= 2
+                            ? styles.violationCritical
+                            : styles.violationCount
+                        }
+                      >
+                        {formatNumber(entry.lastHour)}
+                      </span>
+                    </td>
+                    <td>{formatNumber(entry.last24Hours)}</td>
+                    <td>{formatNumber(entry.total)}</td>
+                    <td>
+                      <time dateTime={entry.lastViolationAt}>
+                        {formatDate(entry.lastViolationAt)}
+                      </time>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className={styles.emptyState}>
+            <span aria-hidden="true">✓</span>
+            <strong>Brak zarejestrowanych naruszeń</strong>
+            <p>Licznik zacznie działać po pierwszym zablokowanym zdarzeniu.</p>
+          </div>
+        )}
+      </section>
 
       <section className={`${styles.panel} ${styles.logsPanel}`}>
         <div className={styles.panelHeader}>

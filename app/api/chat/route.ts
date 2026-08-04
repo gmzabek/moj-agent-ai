@@ -20,12 +20,21 @@ import {
   enforceDailyTokenBudget,
   recordApiUsage,
 } from "../../../lib/apiUsage.server";
-import { recordSecurityMessageSafely } from "../../../lib/securityLogs.server";
+import {
+  recordSecurityMessageSafely,
+  recordSecurityViolationAndGetMessage,
+} from "../../../lib/securityLogs.server";
+import {
+  SECURITY_AGENT_POLICY,
+  SECURITY_POLICY_FRAGMENTS,
+} from "../../../lib/securityPolicy.server";
 import {
   BLOCKED_INPUT_MESSAGE,
   BLOCKED_OUTPUT_MESSAGE,
   filterOutput,
+  isSecurityViolationReason,
   messageRateLimiter,
+  sanitizeHtmlForAgent,
   validateInput,
 } from "../../../security.mjs";
 import { searchKnowledgeBase } from "../../../lib/searchKnowledge.server";
@@ -137,58 +146,21 @@ W polityce cenowej i rachunkowości zarządczej analizuję marżę, próg rentow
 - Nie udzielam porad prawnych, medycznych ani finansowych jako wiążącej ekspertyzy. Mogę pomóc przygotować pytania do specjalisty lub uporządkować kontekst biznesowy.
 - Nie automatyzuję procesu tylko dlatego, że jest to technicznie możliwe. Jeśli prostsze rozwiązanie daje podobny efekt jak AI, rekomenduję prostszy wariant.`;
 
-const protectedSystemPromptFragments = systemPrompt
-  .split(/\r?\n/u)
-  .map((line) => line.trim())
-  .filter((line) => line.length >= 40);
+const protectedSystemPromptFragments = [
+  ...systemPrompt
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter((line) => line.length >= 40),
+  ...SECURITY_POLICY_FRAGMENTS,
+];
 
 function getModel(model: unknown): AiModel {
   return model === "pro" ? "pro" : "flash";
 }
 
-function decodeHtmlEntities(text: string) {
-  const namedEntities: Record<string, string> = {
-    amp: "&",
-    apos: "'",
-    gt: ">",
-    lt: "<",
-    nbsp: " ",
-    quot: '"',
-  };
-
-  return text.replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (match, entity: string) => {
-    const normalizedEntity = entity.toLowerCase();
-
-    if (normalizedEntity in namedEntities) {
-      return namedEntities[normalizedEntity];
-    }
-
-    if (normalizedEntity.startsWith("#x")) {
-      const codePoint = Number.parseInt(normalizedEntity.slice(2), 16);
-      return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : match;
-    }
-
-    if (normalizedEntity.startsWith("#")) {
-      const codePoint = Number.parseInt(normalizedEntity.slice(1), 10);
-      return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : match;
-    }
-
-    return match;
-  });
-}
-
 function extractTextFromHtml(html: string) {
-  return decodeHtmlEntities(
-    html
-      .replace(/<script[\s\S]*?<\/script>/gi, " ")
-      .replace(/<style[\s\S]*?<\/style>/gi, " ")
-      .replace(/<nav[\s\S]*?<\/nav>/gi, " ")
-      .replace(/<footer[\s\S]*?<\/footer>/gi, " ")
-      .replace(/<!--[\s\S]*?-->/g, " ")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/\s+/g, " ")
-      .trim(),
-  ).slice(0, maxWebPageCharacters);
+  const validation = sanitizeHtmlForAgent(html);
+  return validation.ok ? validation.value.slice(0, maxWebPageCharacters) : "";
 }
 
 function weatherDescription(code: number) {
@@ -858,54 +830,78 @@ function getApiErrorMessage(error: unknown) {
     : "Nieznany blad po stronie API.";
 }
 
-function getMessageText(parts: { type: string; text?: string }[]) {
+function getMessageText(parts: unknown) {
+  if (!Array.isArray(parts)) return "";
+
   return parts
-    .filter((part) => part.type === "text")
-    .map((part) => part.text ?? "")
+    .filter(
+      (part): part is { type: "text"; text: string } =>
+        Boolean(
+          part &&
+            typeof part === "object" &&
+            "type" in part &&
+            part.type === "text" &&
+            "text" in part &&
+            typeof part.text === "string",
+        ),
+    )
+    .map((part) => part.text)
     .join("");
 }
 
 function getLastUserText(messages: UIMessage[]) {
   for (let i = messages.length - 1; i >= 0; i -= 1) {
-    if (messages[i].role === "user") {
-      return getMessageText(messages[i].parts);
+    const message = messages[i];
+    if (message?.role === "user") {
+      return getMessageText(message.parts);
     }
   }
 
   return "";
 }
 
-function replaceLastUserText(messages: UIMessage[], safeText: string) {
-  const safeMessages = [...messages];
+function sanitizeClientMessages(messages: UIMessage[], safeLastUserText: string) {
+  const recentMessages = messages.slice(-50);
+  const lastUserIndex = recentMessages.findLastIndex(
+    (message) => message?.role === "user",
+  );
 
-  for (let index = safeMessages.length - 1; index >= 0; index -= 1) {
-    const message = safeMessages[index];
-
-    if (message.role !== "user") {
-      continue;
+  return recentMessages.flatMap<UIMessage>((message, index) => {
+    if (
+      !message ||
+      (message.role !== "user" && message.role !== "assistant") ||
+      !Array.isArray(message.parts)
+    ) {
+      return [];
     }
 
-    let didReplaceText = false;
-    safeMessages[index] = {
-      ...message,
-      parts: message.parts.map((part) => {
-        if (part.type !== "text") {
-          return part;
-        }
+    const text = getMessageText(message.parts);
+    let safeText: string;
 
-        if (didReplaceText) {
-          return { ...part, text: "" };
-        }
+    if (message.role === "user") {
+      if (index === lastUserIndex) {
+        safeText = safeLastUserText;
+      } else {
+        const validation = validateInput(text);
+        if (!validation.ok) return [];
+        safeText = validation.value;
+      }
+    } else {
+      if (!text) return [];
+      const filtered = filterOutput(text, {
+        protectedFragments: protectedSystemPromptFragments,
+      });
+      if (filtered === BLOCKED_OUTPUT_MESSAGE) return [];
+      safeText = filtered;
+    }
 
-        didReplaceText = true;
-        return { ...part, text: safeText };
-      }),
-    };
-
-    return safeMessages;
-  }
-
-  return safeMessages;
+    return [
+      {
+        ...message,
+        parts: [{ type: "text" as const, text: safeText }],
+      },
+    ];
+  });
 }
 
 function parseImageDataUrl(image: unknown) {
@@ -1128,6 +1124,7 @@ async function streamModelToController({
     messages: modelMessages,
     tools: agentTools,
     stopWhen: stepCountIs(maxSteps),
+    maxRetries: 1,
   });
   const bufferedChunks: UIMessageChunk[] = [];
   let didFlushToClient = false;
@@ -1192,18 +1189,17 @@ async function streamModelToController({
     });
 
     if (filteredOutput === BLOCKED_OUTPUT_MESSAGE) {
-      await recordSecurityMessageSafely({
+      const securityMessage = await recordSecurityViolationAndGetMessage({
         supabase,
         userId,
         message: "Odpowiedź modelu zatrzymana przez filtr wyjścia.",
-        blocked: true,
-        blockReason: "output_filter",
+        reason: "output_filter",
         stage: "output",
         endpoint: "/api/chat",
       });
       enqueueTextResponse(
         controller,
-        `${BLOCKED_OUTPUT_MESSAGE}${createUsageFooter(chatModelId, usage)}`,
+        securityMessage,
       );
       didFlushToClient = true;
       return;
@@ -1349,6 +1345,18 @@ export async function POST(req: Request) {
   );
 
   if (!validation.ok) {
+    if (isSecurityViolationReason(validation.reason)) {
+      const securityMessage = await recordSecurityViolationAndGetMessage({
+        supabase,
+        userId: user.id,
+        message: rawLastUserText,
+        reason: validation.reason,
+        stage: "input",
+        endpoint: "/api/chat",
+      });
+      return Response.json({ error: securityMessage }, { status: 400 });
+    }
+
     await recordSecurityMessageSafely({
       supabase,
       userId: user.id,
@@ -1369,7 +1377,7 @@ export async function POST(req: Request) {
     stage: "input",
     endpoint: "/api/chat",
   });
-  const safeMessages = replaceLastUserText(messages, lastUserText);
+  const safeMessages = sanitizeClientMessages(messages, lastUserText);
   const modelMessages = addImageToLastUserMessage(
     await convertToModelMessages(safeMessages),
     image,
@@ -1439,10 +1447,14 @@ export async function POST(req: Request) {
     }
   }
 
-  const recentConversationMemory = await getRecentConversationMemory(
-    supabase,
-    userId,
-  );
+  const recentConversationMemory = (
+    await getRecentConversationMemory(supabase, userId)
+  ).flatMap<ConversationMemoryMessage>((message) => {
+    const memoryValidation = validateInput(message.content);
+    return memoryValidation.ok
+      ? [{ ...message, content: memoryValidation.value }]
+      : [];
+  });
   const rememberedFacts = getFactsFromConversationMemory(recentConversationMemory);
   const conversationMemoryText = recentConversationMemory
     .map((message) => `${message.role === "user" ? "Użytkownik" : "Agent"}: ${message.content}`)
@@ -1451,7 +1463,7 @@ export async function POST(req: Request) {
   const conversationMemoryPrompt = conversationMemoryText
     ? `\n\nPamięć z wcześniejszych rozmów zapisanych w Supabase:\n${conversationMemoryText}\nWykorzystuj te informacje jako kontekst użytkownika. Nie pytaj ponownie o dane, które są w tej pamięci.`
     : "";
-  const personalizedSystemPrompt = `${systemPrompt}${getProfilePrompt(profile, profileError)}${conversationMemoryPrompt}`;
+  const personalizedSystemPrompt = `${systemPrompt}${SECURITY_AGENT_POLICY}${getProfilePrompt(profile, profileError)}${conversationMemoryPrompt}`;
   const agentTools = createAgentTools(supabase, userId);
 
   if (savedDisplayName && isNameOnlyIntroduction(lastUserText)) {

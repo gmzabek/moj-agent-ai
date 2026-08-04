@@ -30,6 +30,14 @@ type BlockedMessageRow = {
   endpoint: string;
 };
 
+type ViolationRow = {
+  user_id: string;
+  violations_last_hour: number | string;
+  violations_last_24_hours: number | string;
+  violations_total: number | string;
+  last_violation_at: string;
+};
+
 function toNumber(value: number | string | null | undefined) {
   const parsed = Number(value ?? 0);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -93,7 +101,13 @@ async function getUserEmailMap(userIds: string[]) {
 
 export async function getSecurityDashboardData() {
   const admin = getSupabaseAdmin();
-  const [usageResult, statsResult, frequencyResult, blockedResult] =
+  const [
+    usageResult,
+    statsResult,
+    frequencyResult,
+    blockedResult,
+    violationResult,
+  ] =
     await Promise.all([
       admin.rpc("security_usage_by_user"),
       admin.rpc("security_dashboard_stats"),
@@ -106,6 +120,7 @@ export async function getSecurityDashboardData() {
         .eq("blocked", true)
         .order("created_at", { ascending: false })
         .limit(50),
+      admin.rpc("security_violation_counts"),
     ]);
 
   const firstError =
@@ -122,10 +137,12 @@ export async function getSecurityDashboardData() {
   const stats = ((statsResult.data ?? [])[0] ?? {}) as Partial<StatsRow>;
   const frequencyRows = (frequencyResult.data ?? []) as FrequencyRow[];
   const blockedRows = (blockedResult.data ?? []) as BlockedMessageRow[];
+  const violationRows = (violationResult.data ?? []) as ViolationRow[];
   const emailMap = await getUserEmailMap([
     ...usageRows.map((row) => row.user_id),
     ...frequencyRows.map((row) => row.user_id),
     ...blockedRows.map((row) => row.user_id),
+    ...violationRows.map((row) => row.user_id),
   ]);
   const displayUser = (userId: string) =>
     emailMap.get(userId) ?? `User ${userId.slice(0, 8)}`;
@@ -155,6 +172,74 @@ export async function getSecurityDashboardData() {
     createdAt: row.created_at,
   }));
 
+  const violationCounters = violationRows.map((row) => ({
+    userId: row.user_id,
+    user: displayUser(row.user_id),
+    lastHour: toNumber(row.violations_last_hour),
+    last24Hours: toNumber(row.violations_last_24_hours),
+    total: toNumber(row.violations_total),
+    lastViolationAt: row.last_violation_at,
+  }));
+
+  const diagnostics = [
+    {
+      id: "input-validation",
+      name: "Walidacja wejścia",
+      detail: "Długość, znaki kontrolne i niedozwolone zamiary",
+      status: "active" as const,
+    },
+    {
+      id: "obfuscation-detection",
+      name: "Wykrywanie zaciemniania",
+      detail: "Kodowanie URL, Base64, encje, homoglify i znaki niewidoczne",
+      status: "active" as const,
+    },
+    {
+      id: "hidden-content",
+      name: "Filtr ukrytej treści",
+      detail: "HTML, komentarze, opacity, display i zgodne kolory",
+      status: "active" as const,
+    },
+    {
+      id: "output-filter",
+      name: "Filtr odpowiedzi",
+      detail: "Blokada promptów, sekretów, konfiguracji i kodu źródłowego",
+      status: "active" as const,
+    },
+    {
+      id: "rag-boundary",
+      name: "Izolacja RAG",
+      detail: "Filtrowany odczyt; brak zapisu dokumentów z rozmowy",
+      status: "active" as const,
+    },
+    {
+      id: "rate-limit",
+      name: "Limit wiadomości",
+      detail: "Maksymalnie 50 wiadomości użytkownika na godzinę",
+      status: "active" as const,
+    },
+    {
+      id: "token-budget",
+      name: "Dzienny budżet tokenów",
+      detail: "Limit 10 000 tokenów na użytkownika dziennie",
+      status: "active" as const,
+    },
+    {
+      id: "audit-log",
+      name: "Rejestr zdarzeń",
+      detail: "Logowanie wejścia, wyjścia, blokad i limitów",
+      status: "active" as const,
+    },
+    {
+      id: "violation-counter",
+      name: "Licznik naruszeń",
+      detail: violationResult.error
+        ? "Migracja licznika naruszeń nie została jeszcze zastosowana"
+        : "Agregacja za godzinę, 24 godziny i cały okres",
+      status: violationResult.error ? ("warning" as const) : ("active" as const),
+    },
+  ];
+
   const alerts = [
     ...topUsers
       .filter((user) => user.dailyLimitPercent >= 80)
@@ -174,6 +259,15 @@ export async function getSecurityDashboardData() {
       )} wiadomości w 10 minut`,
       createdAt: new Date().toISOString(),
     })),
+    ...violationCounters
+      .filter((row) => row.lastHour >= 2)
+      .map((row) => ({
+        id: `violations-${row.userId}`,
+        severity: "critical" as const,
+        title: "Powtarzające się naruszenia",
+        detail: `${row.user}: ${row.lastHour} naruszeń w ostatniej godzinie`,
+        createdAt: row.lastViolationAt,
+      })),
     ...blockedMessages.slice(0, 10).map((row) => ({
       id: `blocked-${row.id}`,
       severity: "warning",
@@ -194,5 +288,7 @@ export async function getSecurityDashboardData() {
     topUsers,
     alerts,
     blockedMessages,
+    violationCounters,
+    diagnostics,
   };
 }

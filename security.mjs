@@ -1,4 +1,5 @@
 const MAX_INPUT_LENGTH = 2_000;
+const MAX_EXTERNAL_CONTENT_LENGTH = 500_000;
 const DEFAULT_LIMIT = 50;
 const ONE_HOUR_MS = 60 * 60 * 1_000;
 
@@ -7,6 +8,15 @@ export const BLOCKED_INPUT_MESSAGE =
 
 export const BLOCKED_OUTPUT_MESSAGE =
   "Przepraszam, nie mogę udostępnić tych informacji.";
+
+export const FIRST_SECURITY_BLOCK_MESSAGE =
+  "Agent jest chwilowo niedostępny. Spróbuj ponownie za chwilę.";
+
+export const REPEATED_SECURITY_BLOCK_MESSAGE =
+  "To zapytanie pozostanie bez odpowiedzi, ponieważ narusza zasady bezpieczeństwa.";
+
+export const COST_LIMIT_MESSAGE =
+  "Zakres operacji jest zbyt duży. Ogranicz liczbę elementów i spróbuj ponownie.";
 
 const INPUT_BLACKLIST = [
   "ignore previous",
@@ -18,13 +28,67 @@ const INPUT_BLACKLIST = [
 ];
 
 const ZERO_WIDTH_CHARACTERS = /[\u200B-\u200D\u2060\uFEFF]/gu;
+const BIDIRECTIONAL_CONTROL_CHARACTERS =
+  /[\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/gu;
 const CONTROL_CHARACTERS = /\p{Cc}/gu;
+
+const HOMOGLYPH_MAP = new Map([
+  ["а", "a"],
+  ["е", "e"],
+  ["і", "i"],
+  ["о", "o"],
+  ["р", "p"],
+  ["с", "c"],
+  ["х", "x"],
+  ["у", "y"],
+]);
+
+const CONTROL_INTENT_PATTERNS = [
+  /\b(?:ignore|disregard|override|forget|bypass|disable)\b.{0,90}\b(?:previous|prior|system|developer|security|instructions?|rules?|filters?)\b/iu,
+  /\b(?:zignoruj|pomiń|nadpisz|obejdź|wyłącz|zmień)\b.{0,90}\b(?:instrukcj\w*|zasad\w*|filtr\w*|zabezpiecze\w*|system\w*|ustawien\w*)\b/iu,
+  /\b(?:system|developer|security)\s*(?:prompt|instructions?|settings?|configuration|rules?)\b/iu,
+  /\b(?:prompt|instrukcj\w*|zasad\w*)\s*(?:systemow\w*|dewelopersk\w*|bezpieczeństwa)\b/iu,
+  /\b(?:pokaż|ujawnij|wypisz|przetłumacz|powtórz|sparafrazuj|odtwórz)\b.{0,120}\b(?:prompt\w*|instrukcj\w*|ustawien\w*|konfiguracj\w*|kod\w*\s+źródłow\w*)\b/iu,
+  /\b(?:show|reveal|print|translate|repeat|paraphrase|reconstruct)\b.{0,120}\b(?:prompt|instructions?|settings?|configuration|source\s+code)\b/iu,
+  /\b(?:debuguj\w*|debugging|diagnostyk\w*)\b.{0,120}\b(?:pełn\w*\s+prompt|instrukcj\w*|konfiguracj\w*|ustawien\w*)\b/iu,
+  /\b(?:pokaż|ujawnij|wypisz|podaj|show|reveal|print|list)\b.{0,120}\b(?:klucz\w*|sekr\w*|token\w*|hasł\w*|password\w*|zmienn\w*\s+środowiskow\w*)\b/iu,
+  /\b(?:kod\w*\s+źródłow\w*|source\s+code)\b.{0,100}\b(?:agent\w*|backend\w*|aplikacj\w*|system\w*)\b/iu,
+  /\b(?:terminal|shell|environment variables?|zmienn\w* środowiskow\w*|service role|api[\s_-]*key)\b.{0,100}\b(?:pokaż|ujawnij|show|reveal|list|wypisz|access|dostęp)\b/iu,
+  /\b(?:rozmow\w*|profil\w*|dokument\w*|user[_\s-]*id)\b.{0,100}\b(?:innych|pozostałych|wszystkich|other|all)\b.{0,60}\b(?:użytkownik\w*|users?)\b/iu,
+  /\b(?:wszystk\w*|innych|inne|pozostałych|all|other)\b.{0,80}\b(?:users?|użytkownik\w*|user[_\s-]*id|user[_\s-]*profiles|conversations?)\b/iu,
+  /\b(?:wrzuć|dodaj|zapisz|wprowadź|zaimportuj|upload|insert|upsert|store)\b.{0,120}\b(?:rag|baz\w*\s+wiedzy|knowledge\s+base|documents?|embedding\w*)\b/iu,
+  /\b(?:udawaj|pretend|act as)\b.{0,80}\b(?:administrator|developer|programista|system|root)\b/iu,
+];
+
+const SYNTAX_INJECTION_PATTERNS = [
+  /<\/?(?:system|assistant|developer|tool|instructions?)\b[^>]*>/iu,
+  /\[\/?(?:system|assistant|developer|tool|instructions?)\]/iu,
+  /["']?(?:role|rola)["']?\s*[:=]\s*["']?(?:system|developer|assistant|tool)\b/iu,
+  /\{\{[\s\S]{0,240}\b(?:system|developer|instruction|prompt|tool)\b[\s\S]{0,240}\}\}/iu,
+  /(?:^|\s)(?:BEGIN|START)\s+(?:SYSTEM|DEVELOPER|INSTRUCTIONS?)\b/iu,
+];
+
+const COST_ABUSE_PATTERNS = [
+  /\b(?:100|setk\w*|każd\w*|wszystk\w*|all|every)\b.{0,100}\b(?:miast\w*|kraj\w*|countries|cities|wyszuk\w*|search\w*|pogod\w*|weather)\b/iu,
+  /\b(?:bez końca|w kółko|nieskończon\w*|unlimited|forever|repeat indefinitely)\b/iu,
+];
+
+const HIDDEN_STYLE_PATTERN =
+  /(?:\bhidden\b|type\s*=\s*["']?hidden|aria-hidden\s*=\s*["']?true|display\s*:\s*none|visibility\s*:\s*hidden|opacity\s*:\s*0(?:\D|$)|font-size\s*:\s*(?:0|1px)|width\s*:\s*0\s*;?\s*height\s*:\s*0|(?:left|top)\s*:\s*-\d{3,}(?:px|rem)|clip(?:-path)?\s*:\s*(?:rect\s*\(0|inset\s*\(100%))/iu;
+
+const SAME_FOREGROUND_BACKGROUND_PATTERN =
+  /(?:color\s*:\s*(?:white|#fff(?:fff)?)[^"']*background(?:-color)?\s*:\s*(?:white|#fff(?:fff)?)|background(?:-color)?\s*:\s*(?:white|#fff(?:fff)?)[^"']*color\s*:\s*(?:white|#fff(?:fff)?)|color\s*:\s*(?:black|#000(?:000)?)[^"']*background(?:-color)?\s*:\s*(?:black|#000(?:000)?)|background(?:-color)?\s*:\s*(?:black|#000(?:000)?)[^"']*color\s*:\s*(?:black|#000(?:000)?))/iu;
 
 const SENSITIVE_OUTPUT_PATTERNS = [
   /\bapi[\s_-]*key\b/iu,
   /\bsupabase[\s_-]*url\b/iu,
   /\bsystem[\s_-]*prompt\b/iu,
-  /\b(?:user[\s_-]*profiles|message[\s_-]*logs)\b/iu,
+  /\b(?:developer[\s_-]*instructions?|security[\s_-]*(?:settings?|rules?|configuration))\b/iu,
+  /\b(?:user[\s_-]*profiles|message[\s_-]*logs|service[\s_-]*role)\b/iu,
+  /\b(?:source\s+code|kod\s+źródłowy)\b.{0,80}\b(?:agent\w*|backend\w*|aplikacj\w*|system\w*)\b/iu,
+  /\b(?:password|hasło|secret|sekret|token|cookie|authorization)\s*[:=]\s*\S+/iu,
+  /\bbearer\s+[a-z0-9._~+/=-]{12,}\b/iu,
+  /\b(?:localhost|127\.0\.0\.1|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3})\b/iu,
   /\bsk-[a-z0-9_-]{16,}\b/iu,
   /\beyJ[a-z0-9_-]{10,}\.[a-z0-9_-]{10,}\.[a-z0-9_-]{10,}\b/iu,
 ];
@@ -37,10 +101,101 @@ function normalizeForInspection(value) {
   return value
     .normalize("NFKC")
     .replace(ZERO_WIDTH_CHARACTERS, "")
+    .replace(BIDIRECTIONAL_CONTROL_CHARACTERS, "")
     .replace(CONTROL_CHARACTERS, " ")
+    .replace(/[аеіорсху]/giu, (character) =>
+      HOMOGLYPH_MAP.get(character.toLocaleLowerCase("en-US")) ?? character,
+    )
     .replace(/\s+/gu, " ")
     .trim()
     .toLocaleLowerCase("en-US");
+}
+
+function decodeEscapedCharacters(value) {
+  return value
+    .replace(/\\u\{([0-9a-f]{1,6})\}/giu, (match, code) => {
+      const codePoint = Number.parseInt(code, 16);
+      return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : match;
+    })
+    .replace(/\\u([0-9a-f]{4})/giu, (match, code) =>
+      String.fromCodePoint(Number.parseInt(code, 16)),
+    )
+    .replace(/\\x([0-9a-f]{2})/giu, (match, code) =>
+      String.fromCodePoint(Number.parseInt(code, 16)),
+    );
+}
+
+function decodeBasicHtmlEntities(value) {
+  const named = { amp: "&", apos: "'", gt: ">", lt: "<", nbsp: " ", quot: '"' };
+
+  return value.replace(/&(#x?[0-9a-f]+|[a-z]+);/giu, (match, entity) => {
+    const normalized = entity.toLocaleLowerCase("en-US");
+
+    if (normalized in named) return named[normalized];
+
+    const radix = normalized.startsWith("#x") ? 16 : 10;
+    const numeric = normalized.replace(/^#x?/u, "");
+    const codePoint = Number.parseInt(numeric, radix);
+    return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : match;
+  });
+}
+
+function decodeBase64Fragments(value) {
+  if (typeof globalThis.atob !== "function") return [];
+
+  return (value.match(/[a-z0-9+/]{20,}={0,2}/giu) ?? [])
+    .slice(0, 4)
+    .flatMap((candidate) => {
+      try {
+        const decoded = globalThis.atob(candidate);
+        const printable = Array.from(decoded).filter((character) =>
+          /[\p{L}\p{N}\p{P}\p{Zs}]/u.test(character),
+        ).length;
+        return printable / Math.max(1, decoded.length) >= 0.8 ? [decoded] : [];
+      } catch {
+        return [];
+      }
+    });
+}
+
+function createInspectionVariants(value) {
+  const variants = new Set([value, decodeEscapedCharacters(value), decodeBasicHtmlEntities(value)]);
+
+  if (/%[0-9a-f]{2}/iu.test(value)) {
+    try {
+      variants.add(decodeURIComponent(value));
+    } catch {
+      // Niepoprawne kodowanie URL pozostaje w wariancie bazowym.
+    }
+  }
+
+  for (const decoded of decodeBase64Fragments(value)) variants.add(decoded);
+
+  return Array.from(variants, normalizeForInspection);
+}
+
+function findThreatReason(value) {
+  const variants = createInspectionVariants(value);
+
+  if (variants.some((variant) => SYNTAX_INJECTION_PATTERNS.some((pattern) => pattern.test(variant)))) {
+    return "syntax_injection";
+  }
+
+  if (variants.some((variant) => INPUT_BLACKLIST.some((phrase) => variant.includes(phrase)))) {
+    return "blocked_phrase";
+  }
+
+  if (variants.some((variant) => CONTROL_INTENT_PATTERNS.some((pattern) => pattern.test(variant)))) {
+    return "control_attempt";
+  }
+
+  return null;
+}
+
+function containsCostAbuse(value) {
+  return createInspectionVariants(value).some((variant) =>
+    COST_ABUSE_PATTERNS.some((pattern) => pattern.test(variant)),
+  );
 }
 
 /**
@@ -55,7 +210,9 @@ export function sanitizeInput(input) {
   return input
     .normalize("NFKC")
     .replace(ZERO_WIDTH_CHARACTERS, "")
+    .replace(BIDIRECTIONAL_CONTROL_CHARACTERS, "")
     .replace(CONTROL_CHARACTERS, " ")
+    .replace(/\s+/gu, " ")
     .trim();
 }
 
@@ -82,20 +239,98 @@ export function validateInput(input) {
   }
 
   const sanitized = sanitizeInput(input);
-  const inspected = normalizeForInspection(sanitized);
-  const matchedPhrase = INPUT_BLACKLIST.find((phrase) =>
-    inspected.includes(phrase),
-  );
+  const threatReason = findThreatReason(input);
 
-  if (matchedPhrase) {
+  if (threatReason) {
     return {
       ok: false,
-      reason: "blocked_phrase",
+      reason: threatReason,
       message: BLOCKED_INPUT_MESSAGE,
     };
   }
 
+  if (containsCostAbuse(input)) {
+    return {
+      ok: false,
+      reason: "cost_abuse",
+      message: COST_LIMIT_MESSAGE,
+    };
+  }
+
   return { ok: true, value: sanitized };
+}
+
+export function validateExternalContent(input) {
+  if (typeof input !== "string" || input.trim() === "") {
+    return { ok: false, reason: "invalid_external_content" };
+  }
+
+  if (countCharacters(input) > MAX_EXTERNAL_CONTENT_LENGTH) {
+    return { ok: false, reason: "external_content_too_long" };
+  }
+
+  const threatReason = findThreatReason(input);
+  if (threatReason) return { ok: false, reason: "indirect_injection" };
+
+  return { ok: true, value: sanitizeInput(input) };
+}
+
+export function sanitizeHtmlForAgent(html) {
+  if (typeof html !== "string" || html.trim() === "") {
+    return { ok: false, reason: "invalid_external_content" };
+  }
+
+  const inherentlyHiddenBlocks =
+    html.match(
+      /<(?:script|style|template|noscript|svg)\b[\s\S]*?<\/(?:script|style|template|noscript|svg)\s*>/giu,
+    ) ?? [];
+  let dangerousHiddenContent = inherentlyHiddenBlocks.some((block) =>
+    Boolean(findThreatReason(block)),
+  );
+  const withoutHiddenElements = html.replace(
+    /<([a-z][\w:-]*)\b([^>]*(?:\bhidden\b|aria-hidden\s*=\s*["']?true|display\s*:\s*none|visibility\s*:\s*hidden|opacity\s*:\s*0|font-size\s*:|(?:width|height|left|top)\s*:|clip(?:-path)?\s*:|color\s*:|background(?:-color)?\s*:)[^>]*)>([\s\S]*?)<\/\1\s*>/giu,
+    (fullMatch, _tagName, attributes = "", innerContent = "") => {
+      if (
+        !HIDDEN_STYLE_PATTERN.test(attributes) &&
+        !SAME_FOREGROUND_BACKGROUND_PATTERN.test(attributes)
+      ) {
+        return fullMatch;
+      }
+      if (findThreatReason(innerContent)) dangerousHiddenContent = true;
+      return " ";
+    },
+  );
+
+  const comments = withoutHiddenElements.match(/<!--[\s\S]*?-->/gu) ?? [];
+  if (comments.some((comment) => findThreatReason(comment))) {
+    dangerousHiddenContent = true;
+  }
+
+  if (dangerousHiddenContent) {
+    return { ok: false, reason: "hidden_content" };
+  }
+
+  const visibleText = decodeBasicHtmlEntities(
+    withoutHiddenElements
+      .replace(/<(?:script|style|template|noscript|svg)\b[\s\S]*?<\/(?:script|style|template|noscript|svg)\s*>/giu, " ")
+      .replace(/<!--[\s\S]*?-->/gu, " ")
+      .replace(/<[^>]+>/gu, " ")
+      .replace(/\s+/gu, " ")
+      .trim(),
+  );
+
+  return validateExternalContent(visibleText);
+}
+
+export function isSecurityViolationReason(reason) {
+  return [
+    "blocked_phrase",
+    "control_attempt",
+    "syntax_injection",
+    "too_long",
+    "indirect_injection",
+    "hidden_content",
+  ].includes(reason);
 }
 
 /**

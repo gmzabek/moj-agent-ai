@@ -147,6 +147,60 @@
   margin-bottom: 0.85rem;
 }
 
+.diagnosticsPanel,
+.violationsPanel {
+  margin-bottom: 0.85rem;
+}
+
+.diagnosticsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+  padding: 0.85rem;
+}
+
+.diagnosticCard {
+  display: grid;
+  align-content: start;
+  gap: 0.45rem;
+  min-height: 124px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 9px;
+  padding: 0.85rem;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.diagnosticCard strong {
+  font-size: 0.83rem;
+}
+
+.diagnosticCard p {
+  margin: 0;
+  color: #7f8999;
+  font-size: 0.74rem;
+  line-height: 1.45;
+}
+
+.statusActive,
+.statusWarning {
+  width: fit-content;
+  border-radius: 999px;
+  padding: 0.22rem 0.45rem;
+  font-size: 0.6rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.statusActive {
+  background: rgba(114, 230, 176, 0.1);
+  color: #72e6b0;
+}
+
+.statusWarning {
+  background: rgba(244, 189, 103, 0.11);
+  color: #f4bd67;
+}
+
 .panel {
   overflow: hidden;
   border-radius: 12px;
@@ -281,6 +335,26 @@
   font-size: 0.82rem;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.violationCount,
+.violationCritical {
+  display: inline-grid;
+  min-width: 2rem;
+  min-height: 2rem;
+  place-items: center;
+  border-radius: 7px;
+  font-weight: 800;
+}
+
+.violationCount {
+  background: rgba(114, 230, 176, 0.09);
+  color: #8bf0c0;
+}
+
+.violationCritical {
+  background: rgba(248, 113, 113, 0.12);
+  color: #ff9e9e;
 }
 
 .progressTrack {
@@ -472,6 +546,10 @@
   .mainGrid {
     grid-template-columns: 1fr;
   }
+
+  .diagnosticsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 680px) {
@@ -495,6 +573,10 @@
 
   .statCard {
     min-height: 126px;
+  }
+
+  .diagnosticsGrid {
+    grid-template-columns: 1fr;
   }
 
   .panelHeader {
