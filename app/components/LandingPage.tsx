@@ -1,5 +1,6 @@
 import Link from "next/link";
 import styles from "./LandingPage.module.css";
+import { ThemeToggle } from "./ThemeToggle";
 
 const features = [
   {
@@ -34,9 +35,12 @@ export function LandingPage() {
           <span>◇</span>
           LEO
         </Link>
-        <Link className={styles.navCta} href="/login?next=%2F">
-          Zaloguj się
-        </Link>
+        <div className={styles.navActions}>
+          <ThemeToggle />
+          <Link className={styles.navCta} href="/login?next=%2F">
+            Zaloguj się
+          </Link>
+        </div>
       </nav>
 
       <section className={styles.hero} aria-labelledby="landing-title">

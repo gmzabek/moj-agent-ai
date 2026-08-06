@@ -1,0 +1,20 @@
+{
+  "name": "LEO — Twój osobisty asystent AI",
+  "short_name": "LEO",
+  "description": "LEO zna dokumenty Twojej firmy, pamięta rozmowy i pomaga zamieniać wiedzę w konkretne działania.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#070a12",
+  "theme_color": "#9cf983",
+  "orientation": "any",
+  "lang": "pl",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

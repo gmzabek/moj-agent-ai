@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "./AuthProvider";
+import { ThemeToggle } from "./ThemeToggle";
 
 const sidebarItems = [
   { href: "/admin/dashboard", icon: "📊", label: "Użycie" },
@@ -65,6 +66,7 @@ export function AppSidebar() {
       </nav>
 
       <div className="sidebar-account">
+        <ThemeToggle compact />
         <span>Zalogowano jako</span>
         <strong title={user?.email}>{user?.email}</strong>
         <button onClick={() => void signOut()} type="button">
