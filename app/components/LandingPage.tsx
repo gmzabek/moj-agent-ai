@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import styles from "./LandingPage.module.css";
 import { ThemeToggle } from "./ThemeToggle";
@@ -32,7 +33,14 @@ export function LandingPage() {
 
       <nav className={styles.nav} aria-label="Nawigacja strony głównej">
         <Link className={styles.brand} href="/" aria-label="LEO — strona główna">
-          <span>◇</span>
+          <Image
+            alt=""
+            className={styles.brandLogo}
+            height={38}
+            priority
+            src="/icon.png"
+            width={38}
+          />
           LEO
         </Link>
         <div className={styles.navActions}>
@@ -81,7 +89,16 @@ export function LandingPage() {
                 <p>Jak wygląda cennik planu Business?</p>
               </div>
               <div className={`${styles.message} ${styles.aiMessage}`}>
-                <small><b>◇</b> LEO</small>
+                <small>
+                  <Image
+                    alt=""
+                    className={styles.messageLogo}
+                    height={16}
+                    src="/icon.png"
+                    width={16}
+                  />
+                  LEO
+                </small>
                 <p>
                   Plan Business kosztuje <strong>299 zł miesięcznie</strong> i obejmuje
                   do 10 użytkowników, 50 GB bazy wiedzy oraz priorytetowe wsparcie.
@@ -143,7 +160,13 @@ export function LandingPage() {
 
       <section className={styles.finalCta}>
         <div>
-          <span className={styles.ctaOrb}>◇</span>
+          <Image
+            alt="Logo LEO"
+            className={styles.ctaLogo}
+            height={72}
+            src="/icon.png"
+            width={72}
+          />
           <p>TWÓJ AGENT CZEKA</p>
           <h2>Gotowy? Zacznij w 30 sekund.</h2>
           <span>Załóż bezpłatne konto i porozmawiaj z LEO.</span>
@@ -154,7 +177,16 @@ export function LandingPage() {
       </section>
 
       <footer className={styles.footer}>
-        <Link className={styles.brand} href="/"><span>◇</span> LEO</Link>
+        <Link className={styles.brand} href="/">
+          <Image
+            alt=""
+            className={styles.brandLogo}
+            height={38}
+            src="/icon.png"
+            width={38}
+          />
+          LEO
+        </Link>
         <p>Twój osobisty asystent AI z bazą wiedzy firmy.</p>
         <span>© 2026 LEO</span>
       </footer>
