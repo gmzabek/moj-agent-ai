@@ -1,19 +1,35 @@
-import Link from "next/link";
+"use client";
+
+import { LandingPage } from "./components/LandingPage";
+import { WorkshopChat } from "./components/WorkshopChat";
+import { useAuth } from "./components/AuthProvider";
+
+const chatExamples = [
+  "Jakie są najważniejsze informacje w dokumentach mojej firmy?",
+  "Przygotuj podsumowanie ostatniej rozmowy.",
+  "Pomóż mi zaplanować działania na ten tydzień.",
+  "Znajdź odpowiedź w mojej bazie wiedzy.",
+];
 
 export default function HomePage() {
+  const { user } = useAuth();
+
+  if (!user) {
+    return <LandingPage />;
+  }
+
   return (
-    <main className="shell home-shell">
-      <section className="home-hero">
-        <p className="eyebrow">Lekcja 04</p>
-        <h1>Agent AI</h1>
-        <p>
-          Nadrzędne centrum funkcji AI: planowanie podróży, ReAct, rozmowa,
-          wyszukiwanie, analiza i generowanie treści.
-        </p>
-        <Link className="primary-link" href="/agent">
-          Otwórz agenta
-        </Link>
-      </section>
-    </main>
+    <WorkshopChat
+      title="💬 Atlas AI"
+      subtitle="Twój osobisty asystent z pamięcią i firmową bazą wiedzy."
+      endpoint="/api/chat"
+      placeholder="O co chcesz zapytać Atlasa?"
+      storageKey="atlas-home-chat-history"
+      examples={chatExamples}
+      exampleMode="send"
+      enableUserProfile
+      renderMarkdown
+      emptyText="Wybierz przykład albo rozpocznij własną rozmowę."
+    />
   );
 }

@@ -25,6 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const isPublicPath = pathname === "/" || pathname === "/login";
 
   useEffect(() => {
     let isMounted = true;
@@ -56,13 +57,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (isLoading || user || pathname === "/login") {
+    if (isLoading || user || isPublicPath) {
       return;
     }
 
     const nextPath = pathname.startsWith("/") ? pathname : "/agent";
     router.replace(`/login?next=${encodeURIComponent(nextPath)}`);
-  }, [isLoading, pathname, router, user]);
+  }, [isLoading, isPublicPath, pathname, router, user]);
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
@@ -75,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [isLoading, signOut, user],
   );
 
-  if (isLoading || (!user && pathname !== "/login")) {
+  if (isLoading || (!user && !isPublicPath)) {
     return (
       <main className="auth-loading" aria-live="polite">
         <span />
