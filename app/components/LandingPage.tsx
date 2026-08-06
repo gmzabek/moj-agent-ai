@@ -30,9 +30,9 @@ export function LandingPage() {
       <div className={styles.aurora} aria-hidden="true" />
 
       <nav className={styles.nav} aria-label="Nawigacja strony głównej">
-        <Link className={styles.brand} href="/" aria-label="Atlas AI — strona główna">
+        <Link className={styles.brand} href="/" aria-label="LEO — strona główna">
           <span>◇</span>
-          Atlas AI
+          LEO
         </Link>
         <Link className={styles.navCta} href="/login?next=%2F">
           Zaloguj się
@@ -49,7 +49,7 @@ export function LandingPage() {
             <strong>Zawsze pod ręką.</strong>
           </h1>
           <p className={styles.lead}>
-            Atlas AI to osobisty asystent, który zna Twoje dokumenty, pamięta rozmowy
+            LEO to osobisty asystent, który zna Twoje dokumenty, pamięta rozmowy
             i pomaga zamieniać informacje w konkretne działania.
           </p>
           <div className={styles.heroActions}>
@@ -63,12 +63,12 @@ export function LandingPage() {
           <p className={styles.reassurance}>Bez karty kredytowej · Start w 30 sekund</p>
         </div>
 
-        <div className={styles.heroVisual} aria-label="Podgląd rozmowy z Atlas AI">
+        <div className={styles.heroVisual} aria-label="Podgląd rozmowy z LEO">
           <div className={styles.glow} aria-hidden="true" />
           <div className={styles.appWindow}>
             <div className={styles.windowTop}>
               <div className={styles.windowDots} aria-hidden="true"><span /><span /><span /></div>
-              <p><i /> Atlas AI online</p>
+              <p><i /> LEO online</p>
               <span>•••</span>
             </div>
             <div className={styles.chatArea}>
@@ -77,7 +77,7 @@ export function LandingPage() {
                 <p>Jak wygląda cennik planu Business?</p>
               </div>
               <div className={`${styles.message} ${styles.aiMessage}`}>
-                <small><b>◇</b> Atlas AI</small>
+                <small><b>◇</b> LEO</small>
                 <p>
                   Plan Business kosztuje <strong>299 zł miesięcznie</strong> i obejmuje
                   do 10 użytkowników, 50 GB bazy wiedzy oraz priorytetowe wsparcie.
@@ -121,7 +121,7 @@ export function LandingPage() {
           <p className={styles.eyebrow}>OD PYTANIA DO PEWNEJ ODPOWIEDZI</p>
           <h2 id="demo-title">Nie szukaj w folderach. Po prostu zapytaj.</h2>
           <p>
-            Atlas przeszukuje dokumenty, wyciąga właściwy fragment i pokazuje źródło.
+            LEO przeszukuje dokumenty, wyciąga właściwy fragment i pokazuje źródło.
             Ty podejmujesz decyzję — szybciej i z pełnym kontekstem.
           </p>
           <ul>
@@ -142,7 +142,7 @@ export function LandingPage() {
           <span className={styles.ctaOrb}>◇</span>
           <p>TWÓJ AGENT CZEKA</p>
           <h2>Gotowy? Zacznij w 30 sekund.</h2>
-          <span>Załóż bezpłatne konto i porozmawiaj z Atlasem.</span>
+          <span>Załóż bezpłatne konto i porozmawiaj z LEO.</span>
           <Link className={styles.primaryCta} href="/login?next=%2F">
             Stwórz konto <b>→</b>
           </Link>
@@ -150,9 +150,9 @@ export function LandingPage() {
       </section>
 
       <footer className={styles.footer}>
-        <Link className={styles.brand} href="/"><span>◇</span> Atlas AI</Link>
+        <Link className={styles.brand} href="/"><span>◇</span> LEO</Link>
         <p>Twój osobisty asystent AI z bazą wiedzy firmy.</p>
-        <span>© 2026 Atlas AI</span>
+        <span>© 2026 LEO</span>
       </footer>
     </main>
   );

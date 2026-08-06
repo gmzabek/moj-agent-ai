@@ -45,8 +45,8 @@ export function AppSidebar() {
       <Link className="app-brand" href="/agent">
         <span aria-hidden="true">⚡</span>
         <strong>
-          Agent AI
-          <small>Centrum dowodzenia</small>
+          LEO
+          <small>Firmowy asystent AI</small>
         </strong>
       </Link>
 

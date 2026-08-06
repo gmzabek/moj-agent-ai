@@ -4,8 +4,12 @@ import { AuthProvider } from "./components/AuthProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Agent AI",
-  description: "Agent AI z narzędziami i funkcjami podróżnymi",
+  title: {
+    default: "LEO — Twój osobisty asystent AI",
+    template: "%s | LEO",
+  },
+  description:
+    "LEO zna dokumenty Twojej firmy, pamięta rozmowy i pomaga zamieniać wiedzę w konkretne działania.",
 };
 
 export default function RootLayout({

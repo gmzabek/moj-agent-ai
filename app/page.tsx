@@ -20,10 +20,10 @@ export default function HomePage() {
 
   return (
     <WorkshopChat
-      title="💬 Atlas AI"
+      title="💬 LEO"
       subtitle="Twój osobisty asystent z pamięcią i firmową bazą wiedzy."
       endpoint="/api/chat"
-      placeholder="O co chcesz zapytać Atlasa?"
+      placeholder="O co chcesz zapytać LEO?"
       storageKey="atlas-home-chat-history"
       examples={chatExamples}
       exampleMode="send"

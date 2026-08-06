@@ -75,9 +75,9 @@ export default function LoginPage() {
     <main className="login-page">
       <section className="login-panel" aria-labelledby="login-title">
         <div className="login-brand">
-          <span aria-hidden="true">AI</span>
+          <span aria-hidden="true">LEO</span>
           <div>
-            <strong>Agent AI</strong>
+            <strong>LEO</strong>
             <small>Prywatna przestrzeń robocza</small>
           </div>
         </div>
